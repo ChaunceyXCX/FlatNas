@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import {
   ref,
-  h,
   onMounted,
   onUnmounted,
   computed,
@@ -23,75 +22,14 @@ import DOMPurify from "dompurify";
 const EditModal = defineAsyncComponent(() => import("./EditModal.vue"));
 const SettingsModal = defineAsyncComponent(() => import("./SettingsModal.vue"));
 const GroupSettingsModal = defineAsyncComponent(() => import("./GroupSettingsModal.vue"));
-const LoginModal = defineAsyncComponent({
-  loader: () => import("./LoginModal.vue"),
-  delay: 300,
-  timeout: 10000,
-  loadingComponent: {
-    render() {
-      return h(
-        "div",
-        {
-          class:
-            "fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4",
-        },
-        h(
-          "div",
-          {
-            class:
-              "bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden px-6 py-8 text-center text-gray-500",
-          },
-          "加载中…"
-        )
-      );
-    },
-  },
-  errorComponent: {
-    render(ctx: { error: Error; retry: () => void }) {
-      return h(
-        "div",
-        {
-          class:
-            "fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4",
-        },
-        h(
-          "div",
-          {
-            class:
-              "bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden px-6 py-6 text-center text-gray-700 space-y-4",
-          },
-          [
-            h("p", { class: "text-sm" }, "登录框加载失败，请刷新页面或重试。"),
-            h("div", { class: "flex justify-center gap-3" }, [
-              h(
-                "button",
-                {
-                  class:
-                    "px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm font-medium",
-                  onClick: ctx.retry,
-                },
-                "重试"
-              ),
-              h(
-                "button",
-                {
-                  class:
-                    "px-4 py-2 rounded-xl bg-gray-800 hover:bg-black text-white text-sm font-medium",
-                  onClick: () => {
-                    showLoginModal.value = false;
-                  },
-                },
-                "关闭"
-              ),
-            ]),
-          ]
-        )
-      );
-    },
-  },
-});
-/** 预加载登录弹窗 chunk，避免点击「登录」时异步加载未完成导致弹窗不出现 */
-const preloadLoginModal = () => void import("./LoginModal.vue");
+/**
+ * 登录弹窗使用同步导入，避免「开发正常、Docker 异常」：
+ * - 开发：Vite 按需提供模块，无独立 chunk 请求。
+ * - 生产：动态 import() 会请求 /assets/LoginModal-xxx.js；若浏览器缓存了旧 index.html
+ *   或 chunk 请求失败/超时，会导致一直「加载中」或「登录框加载失败」。
+ * 同步导入将 LoginModal 打进主包，不依赖额外 chunk，部署后稳定可用。
+ */
+import LoginModal from "./LoginModal.vue";
 const BookmarkWidget = defineAsyncComponent(() => import("./BookmarkWidget.vue"));
 const MemoWidget = defineAsyncComponent(() => import("./MemoWidget.vue"));
 const TodoWidget = defineAsyncComponent(() => import("./TodoWidget.vue"));
@@ -1084,7 +1022,6 @@ const sanitizedFooterHtml = computed(() => {
 
 onMounted(() => {
   mainContainerRef.value?.addEventListener("wheel", handleWebPaginationWheel, { passive: false });
-  preloadLoginModal();
 });
 
 onUnmounted(() => {

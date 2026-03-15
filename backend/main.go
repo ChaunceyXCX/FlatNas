@@ -113,8 +113,16 @@ func main() {
 	// Static Files
 	r.Static("/assets", filepath.Join(config.PublicDir, "assets"))
 	r.Static("/icons", filepath.Join(config.PublicDir, "icons"))
-	r.StaticFile("/", filepath.Join(config.PublicDir, "index.html"))
-	r.StaticFile("/index.html", filepath.Join(config.PublicDir, "index.html"))
+	// index.html 禁止强缓存，避免部署新版本后浏览器仍用旧页面引用已不存在的 chunk（如 LoginModal-xxx.js）导致白屏/加载失败
+	indexPath := filepath.Join(config.PublicDir, "index.html")
+	r.GET("/", func(c *gin.Context) {
+		c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
+		c.File(indexPath)
+	})
+	r.GET("/index.html", func(c *gin.Context) {
+		c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
+		c.File(indexPath)
+	})
 	r.StaticFile("/favicon.ico", filepath.Join(config.PublicDir, "favicon.ico"))
 	r.Static("/music", config.MusicDir)
 	r.Static("/backgrounds", config.BackgroundsDir)
@@ -142,9 +150,10 @@ func main() {
 		c.Next()
 	})
 
-	// NoRoute handler for SPA
+	// NoRoute handler for SPA（与上面 index 一致：不缓存，避免引用旧 chunk）
 	r.NoRoute(func(c *gin.Context) {
 		if !strings.HasPrefix(c.Request.URL.Path, "/api") && !strings.HasPrefix(c.Request.URL.Path, "/socket.io") {
+			c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
 			c.File(filepath.Join(config.PublicDir, "index.html"))
 		}
 	})
