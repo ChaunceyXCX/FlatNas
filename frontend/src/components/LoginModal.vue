@@ -1,13 +1,8 @@
 <script setup lang="ts">
-import { ref, watch, nextTick, onMounted } from "vue";
+import { ref, watch, nextTick } from "vue";
 import { useMainStore } from "../stores/main";
 
 const props = defineProps<{ show: boolean }>();
-// #region agent log
-onMounted(() => {
-  fetch('http://127.0.0.1:7872/ingest/26a085c1-eea6-41df-83f2-c178aa092a66',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8409c0'},body:JSON.stringify({sessionId:'8409c0',location:'LoginModal.vue:onMounted',message:'LoginModal mounted',data:{show:props.show},timestamp:Date.now(),hypothesisId:'H3'})}).catch(()=>{});
-});
-// #endregion
 const emit = defineEmits(["update:show"]);
 const store = useMainStore();
 
@@ -20,9 +15,6 @@ const inputRef = ref<HTMLInputElement | null>(null);
 watch(
   () => props.show,
   (newVal) => {
-    // #region agent log
-    if (typeof fetch !== 'undefined') fetch('http://127.0.0.1:7872/ingest/26a085c1-eea6-41df-83f2-c178aa092a66',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8409c0'},body:JSON.stringify({sessionId:'8409c0',location:'LoginModal.vue:watch(show)',message:'props.show changed',data:{newVal},timestamp:Date.now(),hypothesisId:'H5'})}).catch(()=>{});
-    // #endregion
     if (newVal) {
       username.value = "";
       password.value = "";
