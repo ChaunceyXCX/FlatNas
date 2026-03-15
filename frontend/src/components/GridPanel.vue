@@ -25,6 +25,8 @@ const SettingsModal = defineAsyncComponent(() => import("./SettingsModal.vue"));
 const GroupSettingsModal = defineAsyncComponent(() => import("./GroupSettingsModal.vue"));
 const LoginModal = defineAsyncComponent({
   loader: () => import("./LoginModal.vue"),
+  delay: 300,
+  timeout: 10000,
   loadingComponent: {
     render() {
       return h(
@@ -40,6 +42,49 @@ const LoginModal = defineAsyncComponent({
               "bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden px-6 py-8 text-center text-gray-500",
           },
           "加载中…"
+        )
+      );
+    },
+  },
+  errorComponent: {
+    render(ctx: { error: Error; retry: () => void }) {
+      return h(
+        "div",
+        {
+          class:
+            "fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4",
+        },
+        h(
+          "div",
+          {
+            class:
+              "bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden px-6 py-6 text-center text-gray-700 space-y-4",
+          },
+          [
+            h("p", { class: "text-sm" }, "登录框加载失败，请刷新页面或重试。"),
+            h("div", { class: "flex justify-center gap-3" }, [
+              h(
+                "button",
+                {
+                  class:
+                    "px-4 py-2 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm font-medium",
+                  onClick: ctx.retry,
+                },
+                "重试"
+              ),
+              h(
+                "button",
+                {
+                  class:
+                    "px-4 py-2 rounded-xl bg-gray-800 hover:bg-black text-white text-sm font-medium",
+                  onClick: () => {
+                    showLoginModal.value = false;
+                  },
+                },
+                "关闭"
+              ),
+            ]),
+          ]
         )
       );
     },
