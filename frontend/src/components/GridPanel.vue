@@ -1938,6 +1938,7 @@ watch(
 
 const handleAuthAction = async () => {
   // #region agent log
+  if (typeof console !== "undefined" && console.log) console.log("[FlatNas debug] handleAuthAction called", { isLogged: store.isLogged });
   fetch('http://127.0.0.1:7872/ingest/26a085c1-eea6-41df-83f2-c178aa092a66',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b61401'},body:JSON.stringify({sessionId:'b61401',location:'GridPanel.vue:handleAuthAction:entry',message:'handleAuthAction called',data:{isLogged:store.isLogged,showLoginModalType:typeof showLoginModal,hasValue:!!(showLoginModal && typeof (showLoginModal as { value?: unknown }).value !== 'undefined')},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
   // #endregion
   if (store.isLogged) {
@@ -2769,7 +2770,7 @@ onUnmounted(() => {
           :class="isWebPaginationMode ? 'mb-4' : 'mb-4'"
         >
           <div
-            class="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 flex-shrink-0 z-[60] transition-all duration-500"
+            class="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 flex-shrink-0 relative z-[60] transition-all duration-500"
             :style="{ order: isHeaderRowLayout && store.appConfig.titleAlign === 'right' ? 2 : 0 }"
           >
             <h1
