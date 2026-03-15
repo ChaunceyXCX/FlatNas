@@ -352,7 +352,7 @@ const showGroupSettingsModal = ref(false);
 const showLoginModal = ref(false);
 // #region agent log
 watch(showLoginModal, (v) => {
-  fetch('http://127.0.0.1:7872/ingest/26a085c1-eea6-41df-83f2-c178aa092a66',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b61401'},body:JSON.stringify({sessionId:'b61401',location:'GridPanel.vue:watch(showLoginModal)',message:'showLoginModal changed',data:{value:v},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
+  fetch('http://127.0.0.1:7872/ingest/26a085c1-eea6-41df-83f2-c178aa092a66',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8409c0'},body:JSON.stringify({sessionId:'8409c0',location:'GridPanel.vue:watch(showLoginModal)',message:'showLoginModal changed',data:{value:v},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{});
 }, { immediate: true });
 // #endregion
 const isEditMode = ref(false);
@@ -1939,7 +1939,7 @@ watch(
 const handleAuthAction = async () => {
   // #region agent log
   if (typeof console !== "undefined" && console.log) console.log("[FlatNas debug] handleAuthAction called", { isLogged: store.isLogged });
-  fetch('http://127.0.0.1:7872/ingest/26a085c1-eea6-41df-83f2-c178aa092a66',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b61401'},body:JSON.stringify({sessionId:'b61401',location:'GridPanel.vue:handleAuthAction:entry',message:'handleAuthAction called',data:{isLogged:store.isLogged,showLoginModalType:typeof showLoginModal,hasValue:!!(showLoginModal && typeof (showLoginModal as { value?: unknown }).value !== 'undefined')},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+  fetch('http://127.0.0.1:7872/ingest/26a085c1-eea6-41df-83f2-c178aa092a66',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8409c0'},body:JSON.stringify({sessionId:'8409c0',location:'GridPanel.vue:handleAuthAction:entry',message:'handleAuthAction called',data:{isLogged:store.isLogged,showLoginModalType:typeof showLoginModal,hasValue:!!(showLoginModal && typeof (showLoginModal as { value?: unknown }).value !== 'undefined')},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
   // #endregion
   if (store.isLogged) {
     const wasEditing = isEditMode.value;
@@ -1955,7 +1955,10 @@ const handleAuthAction = async () => {
   } else {
     showLoginModal.value = true;
     // #region agent log
-    fetch('http://127.0.0.1:7872/ingest/26a085c1-eea6-41df-83f2-c178aa092a66',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b61401'},body:JSON.stringify({sessionId:'b61401',location:'GridPanel.vue:handleAuthAction:afterSet',message:'showLoginModal.value set to true',data:{showLoginModalValue:showLoginModal.value},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
+    fetch('http://127.0.0.1:7872/ingest/26a085c1-eea6-41df-83f2-c178aa092a66',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8409c0'},body:JSON.stringify({sessionId:'8409c0',location:'GridPanel.vue:handleAuthAction:afterSet',message:'showLoginModal.value set to true',data:{showLoginModalValue:showLoginModal.value},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
+    nextTick(() => {
+      fetch('http://127.0.0.1:7872/ingest/26a085c1-eea6-41df-83f2-c178aa092a66',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'8409c0'},body:JSON.stringify({sessionId:'8409c0',location:'GridPanel.vue:handleAuthAction:nextTick',message:'after nextTick showLoginModal',data:{value:showLoginModal.value},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+    });
     // #endregion
   }
 };
