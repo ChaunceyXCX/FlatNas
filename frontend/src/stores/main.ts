@@ -28,8 +28,9 @@ interface BackupData {
 }
 
 export const useMainStore = defineStore("main", () => {
+  // 使用 polling 优先可在反向代理/未正确配置 WebSocket 时仍能连接（Docker 等环境）
   const socket = io({
-    transports: ["websocket"],
+    transports: ["polling", "websocket"],
     reconnection: true,
     reconnectionAttempts: 10,
   });
@@ -61,6 +62,20 @@ export const useMainStore = defineStore("main", () => {
   const DEV_MARKETPLACE_LIST_URL = "http://localhost:5174/";
 
   socket.on("connect", async () => {
+    // #region agent log
+    fetch("http://127.0.0.1:7872/ingest/26a085c1-eea6-41df-83f2-c178aa092a66", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "b0ccc3" },
+      body: JSON.stringify({
+        sessionId: "b0ccc3",
+        location: "main.ts:socket connect",
+        message: "socket_connected",
+        data: { socketId: socket.id },
+        hypothesisId: "H1",
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
     console.log("Socket connected:", socket.id);
     isConnected.value = true;
     startNetworkHeartbeat();
@@ -101,6 +116,20 @@ export const useMainStore = defineStore("main", () => {
   });
 
   socket.on("connect_error", (err: unknown) => {
+    // #region agent log
+    fetch("http://127.0.0.1:7872/ingest/26a085c1-eea6-41df-83f2-c178aa092a66", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "b0ccc3" },
+      body: JSON.stringify({
+        sessionId: "b0ccc3",
+        location: "main.ts:socket connect_error",
+        message: "socket_connect_error",
+        data: { err: String(err) },
+        hypothesisId: "H1",
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
     console.error("Socket connect error:", err);
   });
 
@@ -1387,6 +1416,20 @@ export const useMainStore = defineStore("main", () => {
   const init = async () => {
     if (isInitializing) return;
     isInitializing = true;
+    // #region agent log
+    fetch("http://127.0.0.1:7872/ingest/26a085c1-eea6-41df-83f2-c178aa092a66", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "b0ccc3" },
+      body: JSON.stringify({
+        sessionId: "b0ccc3",
+        location: "main.ts:init",
+        message: "init_start",
+        data: {},
+        hypothesisId: "H5",
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
 
     hasServerSnapshot.value = false;
     cacheLoadedAt.value = null;
@@ -1445,6 +1488,20 @@ export const useMainStore = defineStore("main", () => {
         }
       }
     } finally {
+      // #region agent log
+      fetch("http://127.0.0.1:7872/ingest/26a085c1-eea6-41df-83f2-c178aa092a66", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "b0ccc3" },
+        body: JSON.stringify({
+          sessionId: "b0ccc3",
+          location: "main.ts:init finally",
+          message: "init_done",
+          data: {},
+          hypothesisId: "H5",
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
       isInitializing = false;
       if (!socketListenersBound) {
         let serverApplyDepth = 0;
