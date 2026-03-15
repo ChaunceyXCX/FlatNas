@@ -22,13 +22,7 @@ import DOMPurify from "dompurify";
 const EditModal = defineAsyncComponent(() => import("./EditModal.vue"));
 const SettingsModal = defineAsyncComponent(() => import("./SettingsModal.vue"));
 const GroupSettingsModal = defineAsyncComponent(() => import("./GroupSettingsModal.vue"));
-/**
- * 登录弹窗使用同步导入，避免「开发正常、Docker 异常」：
- * - 开发：Vite 按需提供模块，无独立 chunk 请求。
- * - 生产：动态 import() 会请求 /assets/LoginModal-xxx.js；若浏览器缓存了旧 index.html
- *   或 chunk 请求失败/超时，会导致一直「加载中」或「登录框加载失败」。
- * 同步导入将 LoginModal 打进主包，不依赖额外 chunk，部署后稳定可用。
- */
+/** 同步导入，避免生产/Docker 下动态 chunk 请求失败导致登录框无法弹出；LoginModal 内已做 store/authMode 防御 */
 import LoginModal from "./LoginModal.vue";
 const BookmarkWidget = defineAsyncComponent(() => import("./BookmarkWidget.vue"));
 const MemoWidget = defineAsyncComponent(() => import("./MemoWidget.vue"));

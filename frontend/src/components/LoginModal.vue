@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { ref, watch, nextTick } from "vue";
+import { ref, watch, nextTick, computed } from "vue";
 import { useMainStore } from "../stores/main";
 
 const props = defineProps<{ show: boolean }>();
 const emit = defineEmits(["update:show"]);
+
 const store = useMainStore();
+const authMode = computed(() => store?.systemConfig?.authMode ?? "single");
 
 const username = ref("");
 const password = ref("");
@@ -21,7 +23,7 @@ watch(
       isRegister.value = false;
       nextTick(() => {
         // Focus username input if visible, else password
-        if (store.systemConfig?.authMode === "multi") {
+        if (authMode.value === "multi") {
           const input = document.querySelector('input[placeholder="用户名"]') as HTMLInputElement;
           if (input) input.focus();
           else inputRef.value?.focus();
@@ -37,7 +39,7 @@ const close = () => emit("update:show", false);
 
 const handleSubmit = async () => {
   // If single user mode, username can be empty (defaults to admin on server)
-  if (store.systemConfig?.authMode === "multi" && !username.value.trim()) {
+  if (authMode.value === "multi" && !username.value.trim()) {
     alert("请输入用户名");
     return;
   }
@@ -83,11 +85,7 @@ const handleSubmit = async () => {
           <template v-else>
             <img src="/ICON.PNG" class="w-6 h-6 object-contain" alt="lock" />
             <span>
-              {{
-                store.systemConfig?.authMode === "single"
-                  ? "管理员登录"
-                  : "用户登录"
-              }}
+              {{ authMode === "single" ? "管理员登录" : "用户登录" }}
             </span>
           </template>
         </h3>
@@ -98,7 +96,7 @@ const handleSubmit = async () => {
 
       <div class="p-6">
         <div class="mb-5 space-y-4">
-          <div v-if="store.systemConfig?.authMode === 'multi'">
+          <div v-if="authMode === 'multi'">
             <input
               v-model="username"
               type="text"
@@ -126,7 +124,7 @@ const handleSubmit = async () => {
           {{ isRegister ? "注 册" : "登 录" }}
         </button>
 
-        <div class="mt-4 text-center" v-if="store.systemConfig?.authMode === 'multi'">
+        <div class="mt-4 text-center" v-if="authMode === 'multi'">
           <button
             @click="isRegister = !isRegister"
             class="text-sm text-gray-500 hover:text-gray-800 hover:underline transition-colors"
