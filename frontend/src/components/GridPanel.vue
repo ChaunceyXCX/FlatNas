@@ -350,6 +350,11 @@ const showSettingsModal = ref(false);
 const showGroupSettingsModal = ref(false);
 
 const showLoginModal = ref(false);
+// #region agent log
+watch(showLoginModal, (v) => {
+  fetch('http://127.0.0.1:7872/ingest/26a085c1-eea6-41df-83f2-c178aa092a66',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b61401'},body:JSON.stringify({sessionId:'b61401',location:'GridPanel.vue:watch(showLoginModal)',message:'showLoginModal changed',data:{value:v},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
+}, { immediate: true });
+// #endregion
 const isEditMode = ref(false);
 /** 切换编辑模式；进入编辑时设 layoutEditInProgress，退出时 await 保存后再清空，避免外网竞态导致布局被覆盖 */
 const toggleEditMode = async () => {
@@ -1932,6 +1937,9 @@ watch(
 );
 
 const handleAuthAction = async () => {
+  // #region agent log
+  fetch('http://127.0.0.1:7872/ingest/26a085c1-eea6-41df-83f2-c178aa092a66',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b61401'},body:JSON.stringify({sessionId:'b61401',location:'GridPanel.vue:handleAuthAction:entry',message:'handleAuthAction called',data:{isLogged:store.isLogged,showLoginModalType:typeof showLoginModal,hasValue:!!(showLoginModal && typeof (showLoginModal as { value?: unknown }).value !== 'undefined')},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+  // #endregion
   if (store.isLogged) {
     const wasEditing = isEditMode.value;
     isEditMode.value = false;
@@ -1945,6 +1953,9 @@ const handleAuthAction = async () => {
     store.logout();
   } else {
     showLoginModal.value = true;
+    // #region agent log
+    fetch('http://127.0.0.1:7872/ingest/26a085c1-eea6-41df-83f2-c178aa092a66',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b61401'},body:JSON.stringify({sessionId:'b61401',location:'GridPanel.vue:handleAuthAction:afterSet',message:'showLoginModal.value set to true',data:{showLoginModalValue:showLoginModal.value},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
+    // #endregion
   }
 };
 const openSettings = () => {
@@ -1952,6 +1963,16 @@ const openSettings = () => {
     showLoginModal.value = true;
   } else {
     showSettingsModal.value = true;
+  }
+};
+const openLoginModal = () => {
+  showLoginModal.value = true;
+};
+const openEditOrLogin = () => {
+  if (!store.isLogged) {
+    showLoginModal.value = true;
+  } else {
+    toggleEditMode();
   }
 };
 
@@ -2717,24 +2738,8 @@ onUnmounted(() => {
       v-model:collapsed="sidebarCollapsed"
       class="fixed left-0 top-0 z-40 pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)]"
       :class="isMobile && sidebarCollapsed ? 'h-auto' : 'h-full'"
-      :onOpenSettings="
-        () => {
-          if (!store.isLogged) {
-            showLoginModal = true;
-            return;
-          }
-          showSettingsModal = true;
-        }
-      "
-      :onOpenEdit="
-        () => {
-          if (!store.isLogged) {
-            showLoginModal = true;
-            return;
-          }
-          toggleEditMode();
-        }
-      "
+      :onOpenSettings="openSettings"
+      :onOpenEdit="openEditOrLogin"
     />
 
     <div
@@ -2764,7 +2769,7 @@ onUnmounted(() => {
           :class="isWebPaginationMode ? 'mb-4' : 'mb-4'"
         >
           <div
-            class="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 flex-shrink-0 z-30 transition-all duration-500"
+            class="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 flex-shrink-0 z-[60] transition-all duration-500"
             :style="{ order: isHeaderRowLayout && store.appConfig.titleAlign === 'right' ? 2 : 0 }"
           >
             <h1

@@ -1,8 +1,13 @@
 <script setup lang="ts">
-import { ref, watch, nextTick } from "vue";
+import { ref, watch, nextTick, onMounted } from "vue";
 import { useMainStore } from "../stores/main";
 
 const props = defineProps<{ show: boolean }>();
+// #region agent log
+onMounted(() => {
+  fetch('http://127.0.0.1:7872/ingest/26a085c1-eea6-41df-83f2-c178aa092a66',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b61401'},body:JSON.stringify({sessionId:'b61401',location:'LoginModal.vue:onMounted',message:'LoginModal mounted',data:{show:props.show},timestamp:Date.now(),hypothesisId:'D'})}).catch(()=>{});
+});
+// #endregion
 const emit = defineEmits(["update:show"]);
 const store = useMainStore();
 
