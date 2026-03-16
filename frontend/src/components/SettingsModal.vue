@@ -757,20 +757,20 @@ const exportDockerLogs = async () => {
 // Password Confirm Logic
 const showPasswordConfirm = ref(false);
 const showMultiUserWarning = ref(false);
-const pendingAction = ref<(() => void) | null>(null);
+const pendingAction = ref<(() => void | Promise<void>) | null>(null);
 const confirmTitle = ref("");
 
-const requestAuth = (action: () => void, title: string) => {
+const requestAuth = (action: () => void | Promise<void>, title: string) => {
   pendingAction.value = action;
   confirmTitle.value = title;
   showPasswordConfirm.value = true;
 };
 
-const onAuthSuccess = () => {
-  if (pendingAction.value) {
-    pendingAction.value();
-    pendingAction.value = null;
-  }
+const onAuthSuccess = async () => {
+  const action = pendingAction.value;
+  pendingAction.value = null;
+  if (!action) return;
+  await action();
 };
 
 const close = () => emit("update:show", false);
@@ -794,7 +794,8 @@ const handleChangePassword = () => {
   requestAuth(async () => {
     store.changePassword(newPasswordInput.value);
     store.markDirty();
-    alert("密码修改成功");
+    await store.saveData(true);
+    alert("密码修改成功，请使用新密码重新登录验证");
     newPasswordInput.value = "";
   }, "请输入当前密码以确认修改");
 };
