@@ -13,6 +13,7 @@ const props = defineProps<{
   data?: NavItem | null;
   // ✨✨✨ 新增关键参数：当前分组ID (必须有这个才能支持分组添加)
   groupId?: string;
+  onSave?: (payload: { item: NavItem; groupId?: string }) => Promise<void>;
 }>();
 
 const emit = defineEmits(["update:show", "save"]);
@@ -870,12 +871,20 @@ const submit = async () => {
       }
     }
 
-    emit("save", {
+    const payload = {
       item: { ...form.value, id: props.data?.id },
       groupId: localGroupId.value || props.groupId,
-    });
+    };
+
+    if (props.onSave) {
+      await props.onSave(payload);
+    } else {
+      emit("save", payload);
+    }
 
     close();
+  } catch (e: any) {
+    alert(e.message || "保存失败，请重试");
   } finally {
     isSaving.value = false;
   }

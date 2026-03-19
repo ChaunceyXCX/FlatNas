@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"flatnasgo-backend/config"
 	"flatnasgo-backend/handlers"
 	"flatnasgo-backend/middleware"
@@ -11,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -24,38 +22,6 @@ import (
 	"github.com/googollee/go-socket.io/engineio/transport/websocket"
 )
 
-// #region agent log
-var debugLogMu sync.Mutex
-
-func debugLog(location, message, hypothesisId string, data map[string]interface{}) {
-	f := os.Getenv("DEBUG_LOG_FILE")
-	if f == "" {
-		return
-	}
-	payload := map[string]interface{}{
-		"sessionId":    "214d88",
-		"location":     location,
-		"message":      message,
-		"hypothesisId": hypothesisId,
-		"data":         data,
-		"timestamp":    time.Now().UnixMilli(),
-	}
-	if data == nil {
-		payload["data"] = map[string]interface{}{}
-	}
-	raw, _ := json.Marshal(payload)
-	debugLogMu.Lock()
-	defer debugLogMu.Unlock()
-	file, err := os.OpenFile(f, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-		return
-	}
-	file.Write(append(raw, '\n'))
-	file.Close()
-}
-
-// #endregion
-
 func main() {
 	fmt.Println("Backend process started")
 	config.Init()
@@ -66,16 +32,9 @@ func main() {
 	handlers.StartThumbSync()
 
 	r := gin.New()
-	// #region agent log
 	r.Use(func(c *gin.Context) {
-		if strings.HasPrefix(c.Request.URL.Path, "/socket.io") {
-			debugLog("main.go:socket.io middleware", "socket.io request", "H4", map[string]interface{}{
-				"path": c.Request.URL.Path, "origin": c.GetHeader("Origin"), "ts": time.Now().UnixMilli(),
-			})
-		}
 		c.Next()
 	})
-	// #endregion
 	r.Use(gin.Logger())
 	r.Use(middleware.RecoveryMiddleware())
 	r.Use(middleware.GzipDecompressMiddleware())
@@ -133,9 +92,6 @@ func main() {
 		},
 	})
 	server.OnConnect("/", func(s socketio.Conn) error {
-		// #region agent log
-		debugLog("main.go:OnConnect", "socket_connect", "H4", map[string]interface{}{"ts": time.Now().UnixMilli()})
-		// #endregion
 		s.SetContext("")
 		return nil
 	})
@@ -163,24 +119,6 @@ func main() {
 	// index.html 禁止强缓存，避免部署新版本后浏览器仍用旧页面引用已不存在的 chunk（如 LoginModal-xxx.js）导致白屏/加载失败
 	indexPath := filepath.Join(config.PublicDir, "index.html")
 	r.GET("/", func(c *gin.Context) {
-		// #region agent log
-		t0 := time.Now().UnixMilli()
-		info, errStat := os.Stat(indexPath)
-		exists := errStat == nil && !info.IsDir()
-		size := int64(0)
-		if exists && info != nil {
-			size = info.Size()
-		}
-		debugLog("main.go:GET / entry", "index_handler", "H2", map[string]interface{}{
-			"publicDir": config.PublicDir, "indexPath": indexPath, "exists": exists, "size": size, "ts": t0,
-		})
-		debugLog("main.go:GET / entry", "index_handler", "H3", map[string]interface{}{
-			"publicDir": config.PublicDir, "indexPath": indexPath, "exists": exists, "size": size,
-		})
-		defer func() {
-			debugLog("main.go:GET / exit", "index_handler_done", "H2", map[string]interface{}{"ts": time.Now().UnixMilli(), "elapsed_ms": time.Now().UnixMilli() - t0})
-		}()
-		// #endregion
 		c.Header("Cache-Control", "no-cache, no-store, must-revalidate")
 		c.File(indexPath)
 	})
@@ -204,19 +142,9 @@ func main() {
 		}
 
 		// Check if file exists in PublicDir
-		// #region agent log
 		reqPath := c.Request.URL.Path
-		// #endregion
 		filePath := filepath.Join(config.PublicDir, reqPath)
 		info, err := os.Stat(filePath)
-		// #region agent log
-		exists := err == nil && info != nil && !info.IsDir()
-		if reqPath == "/ICON.PNG" || strings.HasPrefix(reqPath, "/assets/") {
-			debugLog("main.go:static middleware", "static_file_check", "H3", map[string]interface{}{
-				"path": reqPath, "resolvedPath": filePath, "exists": exists, "statErr": fmt.Sprintf("%v", err),
-			})
-		}
-		// #endregion
 		if err == nil && !info.IsDir() {
 			c.File(filePath)
 			c.Abort()

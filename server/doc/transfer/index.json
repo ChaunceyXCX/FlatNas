@@ -1,6 +1,42 @@
 {
   "items": [
     {
+      "id": "1773948751677057800",
+      "type": "text",
+      "content": "测试1",
+      "timestamp": 1773948751677,
+      "sender": "admin"
+    },
+    {
+      "id": "1773943878205241200",
+      "type": "file",
+      "file": {
+        "name": "trae_manager.exe",
+        "size": 10110151,
+        "type": "application/x-msdownload",
+        "url": "/api/transfer/file/29ec15b9178d3d97917f376dd4030480.exe"
+      },
+      "timestamp": 1773943878205,
+      "sender": "admin"
+    },
+    {
+      "id": "1773884955299678400",
+      "type": "file",
+      "file": {
+        "name": "image.png",
+        "size": 6036,
+        "type": "image/png",
+        "url": "/api/transfer/file/13d82a1d6740698c53330e7f6730e1d9.png",
+        "thumbs": {
+          "128": "/api/transfer/thumb/13d82a1d6740698c53330e7f6730e1d9.png/128",
+          "256": "/api/transfer/thumb/13d82a1d6740698c53330e7f6730e1d9.png/256",
+          "64": "/api/transfer/thumb/13d82a1d6740698c53330e7f6730e1d9.png/64"
+        }
+      },
+      "timestamp": 1773884955299,
+      "sender": "admin"
+    },
+    {
       "id": "1773859145774281100",
       "type": "text",
       "content": "1",

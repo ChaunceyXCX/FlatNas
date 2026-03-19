@@ -4740,7 +4740,7 @@ document.querySelector('.card-item').addEventListener('click', () => {
                     <span class="text-lg text-gray-700 font-mono">613835409</span>
                   </div>
                   <div class="flex items-center gap-2">
-                    <span class="text-lg text-gray-400 font-mono">V{{ store.currentVersion }}</span>
+                    <span class="text-lg text-gray-400 font-mono">v{{ store.currentVersion }}</span>
                   </div>
                 </div>
 

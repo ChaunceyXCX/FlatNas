@@ -438,7 +438,7 @@ export const useMainStore = defineStore("main", () => {
   }
 
   // Version Check
-  const currentVersion = "1.1.5dev3";
+  const currentVersion = "1.1.5dev5";
   const latestVersion = ref("");
   const dockerUpdateAvailable = ref(false);
   const updateCheckLastAt = useStorage<number>("flat-nas-update-check-last-at", 0);
@@ -1587,7 +1587,7 @@ export const useMainStore = defineStore("main", () => {
     { deep: true }
   );
 
-  const saveData = async (immediate = false, force = false) => {
+  const saveData = async (immediate = false, force = false): Promise<"saved" | "no_change" | "conflict" | "unauthorized"> => {
     if (saveTimer) {
       clearTimeout(saveTimer);
       saveTimer = null;
@@ -1596,32 +1596,32 @@ export const useMainStore = defineStore("main", () => {
     // 冲突解决期间，仅允许通过 resolveConflict 触发的 force 保存；其它保存请求只置 hasPendingSave
     if (conflictResolving.value && !force) {
       hasPendingSave.value = true;
-      return;
+      return "no_change";
     }
 
     // 移除：不要在 saveData 开始时更新快照，因为此时 widgets 已经是脏数据了！
     // 应该在保存成功后更新快照。
 
-    const doSave = async () => {
+    const doSave = async (): Promise<"saved" | "no_change" | "conflict" | "unauthorized"> => {
       // 冲突状态下，除非强制保存，否则不执行任何保存
       if (conflictState.value.show && !force) {
         hasPendingSave.value = false;
-        return;
+        return "conflict";
       }
 
       const shouldSyncAfterConflict = false;
       if (isPageUnloading.value) {
-        return;
+        return "no_change";
       }
       if (isCacheWriteGuardActive()) {
         deferredSaveRequested.value = true;
-        return;
+        return "no_change";
       }
 
       // 如果正在保存，则标记为有待保存请求，然后返回
       if (isSaving.value) {
         hasPendingSave.value = true;
-        return;
+        return "no_change";
       }
 
       isSaving.value = true;
@@ -1630,7 +1630,7 @@ export const useMainStore = defineStore("main", () => {
 
       try {
         if (!isLogged.value) {
-          return;
+          return "unauthorized";
         }
 
         // Handle force save: adopt server version to bypass conflict check
@@ -1652,7 +1652,7 @@ export const useMainStore = defineStore("main", () => {
         const json = JSON.stringify(body);
 
         if (json === lastSavedJson) {
-          return;
+          return "no_change";
         }
 
         // Optimistic cache save to ensure data persistence even if network fails
@@ -1738,6 +1738,7 @@ export const useMainStore = defineStore("main", () => {
           } else {
             pendingServerVersion.value = 0;
           }
+          return "saved";
         }
         if (res.status === 409) {
           const result = await res.json().catch(() => null);
@@ -1748,7 +1749,7 @@ export const useMainStore = defineStore("main", () => {
             // 策略调整：如果冲突 UI 已显示，则不再自动重试，直接让用户决定
             if (conflictState.value.show) {
               // 维持冲突状态，不做任何事，等待用户操作
-              return;
+              return "conflict";
             }
 
             // [Fix Question 3] 智能冲突检测：如果是纯数据变动（布局/分组/配置未变），则静默同步
@@ -1795,7 +1796,7 @@ export const useMainStore = defineStore("main", () => {
                   layoutDirty.value = false;
 
                   pendingServerVersion.value = 0;
-                  return;
+                  return "saved";
                 }
               }
             } catch (e) {
@@ -1834,7 +1835,7 @@ export const useMainStore = defineStore("main", () => {
                 password.value = "";
               }
               pendingServerVersion.value = 0;
-              return;
+              return "saved";
             }
             // 仅当本次保存包含「组件区布局」或「卡片区位置」变动时才显示冲突弹窗；
             // 纯组件内容变化（如备忘录文字）与版本冲突无关，静默拉取服务端并应用，不弹窗。
@@ -1856,7 +1857,7 @@ export const useMainStore = defineStore("main", () => {
               dataVersion.value = v;
               await fetchAndProcessData();
               hasPendingSave.value = false;
-              return;
+              return "saved";
             }
             conflictState.value = {
               show: true,
@@ -1865,7 +1866,7 @@ export const useMainStore = defineStore("main", () => {
             };
             hasPendingSave.value = false;
           }
-          return;
+          return "conflict";
         }
 
         if (res.status === 401) {
@@ -1874,15 +1875,19 @@ export const useMainStore = defineStore("main", () => {
           isLogged.value = false;
           localStorage.removeItem("flat-nas-token");
           localStorage.removeItem("flat-nas-username");
+          return "unauthorized";
         }
+
+        throw new Error("保存失败");
       } catch (e) {
         if (isPageUnloading.value) {
-          return;
+          return "no_change";
         }
         if (e instanceof DOMException && e.name === "AbortError") {
-          return;
+          throw new Error("保存超时");
         }
         console.error("保存失败", e);
+        throw e;
       } finally {
         isSaving.value = false;
         if (shouldSyncAfterConflict) {
@@ -1901,10 +1906,12 @@ export const useMainStore = defineStore("main", () => {
       return doSave();
     }
 
-    saveTimer = setTimeout(() => {
-      saveTimer = null;
-      doSave();
-    }, 500);
+    return new Promise((resolve, reject) => {
+      saveTimer = setTimeout(() => {
+        saveTimer = null;
+        doSave().then(resolve).catch(reject);
+      }, 500);
+    });
   };
 
   if (typeof window !== "undefined") {

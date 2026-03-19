@@ -62,8 +62,9 @@ const scrollContainerRef = ref<HTMLDivElement | null>(null);
 
 const scrollToBottom = async () => {
   await nextTick();
-  if (scrollContainerRef.value) {
-    scrollContainerRef.value.scrollTop = scrollContainerRef.value.scrollHeight;
+  const el = scrollContainerRef.value;
+  if (el) {
+    el.scrollTop = el.scrollHeight;
   }
 };
 
@@ -379,6 +380,18 @@ const pollItems = async (force = false) => {
     scheduleNextPoll();
   }
 };
+
+watch(
+  loading,
+  async (newVal, oldVal) => {
+    await nextTick();
+    if (oldVal === true && newVal === false) {
+      // loading 完成后容器会被重新挂载，避免滚动被重置到顶部
+      void scrollToBottom();
+    }
+  },
+  { flush: "post" },
+);
 
 const openFilePicker = () => fileInputRef.value?.click();
 
@@ -768,6 +781,8 @@ const sendText = async () => {
     if (item && !items.value.some((x) => x.id === item.id)) {
       items.value = [item, ...items.value].slice(0, 200);
     }
+    // 发送成功后，滚动到可见内容区域（与聊天保持一致）
+    await scrollToBottom();
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
     error.value = msg || "发送失败";

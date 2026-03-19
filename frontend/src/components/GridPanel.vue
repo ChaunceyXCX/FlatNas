@@ -1301,7 +1301,7 @@ const openEditModal = (item: NavItem, groupId?: string) => {
   }
   showEditModal.value = true;
 };
-const handleSave = (payload: { item: NavItem; groupId?: string }) => {
+const handleSave = async (payload: { item: NavItem; groupId?: string }) => {
   // Check if it's a div-card widget update
   const widget = store.widgets.find((w) => w.id === payload.item.id && w.type === "div-card");
   if (widget) {
@@ -1314,29 +1314,34 @@ const handleSave = (payload: { item: NavItem; groupId?: string }) => {
       ...dataProps,
     };
     store.markDirty();
-    return;
+  } else {
+    if (payload.item.id) {
+      // Check for group move
+      const targetGroupId = payload.groupId;
+      let moved = false;
+      
+      if (targetGroupId) {
+        const currentGroup = store.groups.find(g => g.items.some(i => i.id === payload.item.id));
+        if (currentGroup && currentGroup.id !== targetGroupId) {
+          // Move item: remove from old group, add to new group
+          store.deleteItem(payload.item.id);
+          store.addItem(payload.item, targetGroupId);
+          moved = true;
+        }
+      }
+      
+      if (!moved) {
+        store.updateItem(payload.item);
+      }
+    } else if (payload.groupId) {
+      store.addItem({ ...payload.item, id: Date.now().toString() }, payload.groupId);
+    }
   }
 
-  if (payload.item.id) {
-    // Check for group move
-    const targetGroupId = payload.groupId;
-    let moved = false;
-    
-    if (targetGroupId) {
-      const currentGroup = store.groups.find(g => g.items.some(i => i.id === payload.item.id));
-      if (currentGroup && currentGroup.id !== targetGroupId) {
-        // Move item: remove from old group, add to new group
-        store.deleteItem(payload.item.id);
-        store.addItem(payload.item, targetGroupId);
-        moved = true;
-      }
-    }
-    
-    if (!moved) {
-      store.updateItem(payload.item);
-    }
-  } else if (payload.groupId)
-    store.addItem({ ...payload.item, id: Date.now().toString() }, payload.groupId);
+  const result = await store.saveData(true);
+  if (result === "conflict" || result === "unauthorized") {
+    throw new Error(`保存失败：${result === "conflict" ? "发生版本冲突" : "未授权或登录已过期"}`);
+  }
 };
 const normalizeGridSpan = (value: number) => Math.round(value * 2) / 2;
 const getDivCardDefaultSize = () => {
@@ -3948,7 +3953,7 @@ onUnmounted(() => {
       v-model:show="showEditModal"
       :data="currentEditItem"
       :groupId="currentGroupId"
-      @save="handleSave"
+      :onSave="handleSave"
     />
     <SettingsModal v-if="showSettingsModal" v-model:show="showSettingsModal" />
     <LoginModal v-if="showLoginModal" v-model:show="showLoginModal" />

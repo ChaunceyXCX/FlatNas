@@ -82,7 +82,7 @@
       "tailscale": false,
       "zerotier": false
     },
-    "networkRules": "",
+    "networkRules": "domain_suffix:iepose.cn\nhost:qdnasceshi.iepose.cn",
     "pcRotation": false,
     "pcRotationInterval": 30,
     "pcRotationMode": "random",
@@ -118,7 +118,7 @@
       }
     ],
     "showCardBackground": true,
-    "showFooterStats": true,
+    "showFooterStats": false,
     "sidebarViewMode": "bookmarks",
     "solidBackgroundColor": "",
     "titleAlign": "left",
@@ -140,9 +140,9 @@
     "wallpaperPcImageBase": "/backgrounds",
     "weatherEffectEnabled": true,
     "weatherSource": "uapi",
-    "webGroupPagination": false,
+    "webGroupPagination": true,
     "webGroupPaginationDisableFlip": true,
-    "widgetAreaCols": 4,
+    "widgetAreaCols": 6,
     "widgetAreaRows": 4,
     "widgetAreaSize": 4
   },
@@ -469,6 +469,87 @@
         }
       ],
       "title": "收藏夹"
+    },
+    {
+      "cardLayout": "horizontal",
+      "cardSize": 120,
+      "gridGap": 8,
+      "iconSize": 48,
+      "id": "1770926015770",
+      "items": [
+        {
+          "allowRestart": true,
+          "allowStop": true,
+          "containerId": "mock-1",
+          "containerName": "nginx-proxy",
+          "description": "Docker Container",
+          "icon": "",
+          "id": "1770926015771",
+          "isPublic": false,
+          "lanUrl": "http://152.32.239.65:80",
+          "openInNewTab": true,
+          "title": "nginx-proxy",
+          "url": "http://152.32.239.65:80"
+        },
+        {
+          "allowRestart": true,
+          "allowStop": true,
+          "containerId": "mock-2",
+          "containerName": "redis-cache",
+          "description": "Docker Container",
+          "icon": "",
+          "id": "1770926021056",
+          "isPublic": false,
+          "lanUrl": "http://152.32.239.65:6379",
+          "openInNewTab": true,
+          "title": "redis-cache",
+          "url": "http://152.32.239.65:6379"
+        },
+        {
+          "allowRestart": true,
+          "allowStop": true,
+          "containerId": "mock-3",
+          "containerName": "postgres-db",
+          "description": "Docker Container",
+          "icon": "",
+          "id": "1770926022947",
+          "isPublic": false,
+          "lanUrl": "http://152.32.239.65:5432",
+          "openInNewTab": true,
+          "title": "postgres-db",
+          "url": "http://152.32.239.65:5432"
+        },
+        {
+          "allowRestart": true,
+          "allowStop": true,
+          "containerId": "mock-6",
+          "containerName": "very-long-container-name-for-testing-ui-layout-truncation",
+          "description": "Docker Container",
+          "icon": "",
+          "id": "1770926030114",
+          "isPublic": false,
+          "lanUrl": "http://152.32.239.65:8080",
+          "openInNewTab": true,
+          "title": "very-long-container-name-for-testing-ui-layout-truncation",
+          "url": "http://152.32.239.65:8080"
+        },
+        {
+          "allowRestart": true,
+          "allowStop": true,
+          "containerId": "mock-extra-7",
+          "containerName": "extra-container-7",
+          "description": "Docker Container",
+          "icon": "",
+          "id": "1770926031330",
+          "isPublic": false,
+          "lanUrl": "http://152.32.239.65:9000",
+          "openInNewTab": true,
+          "title": "extra-container-7",
+          "url": "http://152.32.239.65:9000"
+        }
+      ],
+      "showCardBackground": true,
+      "title": "Docker"
     }
   ],
   "password": "$2a$10$C4z7K0wHjX3HO6C.wI.bHeflmY3lzeslZk3M2Nq0sLcIerousgMRS",
@@ -498,7 +579,7 @@
     "enableDocker": true
   },
   "username": "",
-  "version": 10767,
+  "version": 10153,
   "widgets": [
     {
       "colSpan": 1,
@@ -555,15 +636,15 @@
         "desktop": {
           "h": 1,
           "w": 1,
-          "x": 4,
-          "y": 1
+          "x": 2,
+          "y": 0
         }
       },
       "rowSpan": 1,
       "type": "clockweather",
       "w": 1,
-      "x": 4,
-      "y": 1
+      "x": 2,
+      "y": 0
     },
     {
       "colSpan": 1,
@@ -613,23 +694,23 @@
     {
       "colSpan": 1,
       "data": {
-        "content": "1好吧",
+        "content": "123\n12312\n3",
         "mode": "simple",
-        "server_ts": 1773850285739
+        "server_ts": 1773947883667
       },
       "enable": true,
-      "h": 1.5,
+      "h": 2,
       "id": "w4",
       "isPublic": false,
       "layouts": {
         "desktop": {
-          "h": 1.5,
+          "h": 2,
           "w": 1,
           "x": 2,
           "y": 1
         }
       },
-      "rowSpan": 1.5,
+      "rowSpan": 2,
       "type": "memo",
       "w": 1,
       "x": 2,
@@ -671,26 +752,26 @@
     {
       "colSpan": 1,
       "data": {
-        "style": "analog"
+        "style": "digital"
       },
       "enable": true,
-      "h": 1.5,
+      "h": 1,
       "hideOnMobile": false,
       "id": "w1",
       "isPublic": false,
       "layouts": {
         "desktop": {
-          "h": 1.5,
+          "h": 1,
           "w": 1,
-          "x": 1,
-          "y": 1
+          "x": 3,
+          "y": 0
         }
       },
-      "rowSpan": 1.5,
+      "rowSpan": 1,
       "type": "clock",
       "w": 1,
-      "x": 1,
-      "y": 1
+      "x": 3,
+      "y": 0
     },
     {
       "colSpan": 1,
@@ -724,7 +805,7 @@
         "url": ""
       },
       "enable": false,
-      "hideOnMobile": true,
+      "hideOnMobile": false,
       "id": "w11",
       "isPublic": false,
       "rowSpan": 2,
@@ -736,18 +817,18 @@
         "style": "month-lunar"
       },
       "enable": true,
-      "h": 1.5,
+      "h": 2,
       "id": "w3",
       "isPublic": false,
       "layouts": {
         "desktop": {
-          "h": 1.5,
+          "h": 2,
           "w": 1,
           "x": 3,
           "y": 1
         }
       },
-      "rowSpan": 1.5,
+      "rowSpan": 2,
       "type": "calendar",
       "w": 1,
       "x": 3,
@@ -815,7 +896,7 @@
       "data": null,
       "enable": true,
       "id": "player",
-      "isPublic": true,
+      "isPublic": false,
       "type": "player"
     },
     {
@@ -826,50 +907,50 @@
       "type": "sidebar"
     },
     {
-      "colSpan": 0.5,
+      "colSpan": 1,
       "data": {
         "style": "simple",
-        "targetDate": "2026-05-01T00:00",
-        "title": "劳动节"
+        "targetDate": "2026-02-16T00:00",
+        "title": "除夕"
       },
       "enable": true,
       "h": 1,
-      "hideOnMobile": false,
+      "hideOnMobile": true,
       "id": "w-cd-1765359997069",
-      "isPublic": false,
+      "isPublic": true,
       "layouts": {
         "desktop": {
           "h": 1,
-          "w": 0.5,
-          "x": 1.5,
+          "w": 1,
+          "x": 0,
           "y": 0
         }
       },
       "rowSpan": 1,
       "type": "countdown",
-      "w": 0.5,
-      "x": 1.5,
+      "w": 1,
+      "x": 0,
       "y": 0
     },
     {
       "colSpan": 1,
       "data": null,
       "enable": true,
-      "h": 2.5,
+      "h": 3,
       "id": "file-transfer",
       "isPublic": false,
       "layouts": {
         "desktop": {
-          "h": 2.5,
+          "h": 3,
           "w": 1,
-          "x": 0,
+          "x": 5,
           "y": 0
         }
       },
-      "rowSpan": 2.5,
+      "rowSpan": 3,
       "type": "file-transfer",
       "w": 1,
-      "x": 0,
+      "x": 5,
       "y": 0
     },
     {
@@ -907,110 +988,9 @@
       "type": "status-monitor"
     },
     {
-      "colSpan": 0.5,
-      "data": {
-        "displayFormat": "d-only",
-        "isRunning": false,
-        "pauseStartTime": null,
-        "startTime": "2025-10-06T09:36",
-        "style": "neon",
-        "title": "诞生",
-        "totalPauseDuration": 0
-      },
-      "enable": true,
-      "h": 1,
-      "id": "w-cup-1772789780532",
-      "isPublic": false,
-      "layouts": {
-        "desktop": {
-          "h": 1,
-          "w": 0.5,
-          "x": 1,
-          "y": 0
-        }
-      },
-      "rowSpan": 1,
-      "type": "countup",
-      "w": 0.5,
-      "x": 1,
-      "y": 0
-    },
-    {
-      "colSpan": 0.5,
-      "data": {
-        "backgroundBlur": 6,
-        "backgroundImage": "",
-        "backgroundMask": 0.3,
-        "backupLanUrls": [],
-        "backupUrls": [],
-        "description1": "",
-        "description2": "",
-        "description3": "",
-        "icon": "https://icon-manager.1851365c.er.aliyun-esa.net/icon/flatnas.PNG",
-        "iconSize": 180,
-        "lanUrl": "https://flatnas.top/",
-        "title": "flatnas",
-        "titleColor": "",
-        "url": "https://flatnas.top/"
-      },
-      "enable": true,
-      "h": 1,
-      "id": "div-card-1772789920152-adxlin",
-      "isPublic": false,
-      "layouts": {
-        "desktop": {
-          "h": 1,
-          "w": 0.5,
-          "x": 3,
-          "y": 0
-        }
-      },
-      "rowSpan": 1,
-      "type": "div-card",
-      "w": 0.5,
-      "x": 3,
-      "y": 0
-    },
-    {
-      "colSpan": 0.5,
-      "data": {
-        "backgroundBlur": 6,
-        "backgroundImage": "",
-        "backgroundMask": 0.3,
-        "backupLanUrls": [],
-        "backupUrls": [],
-        "description1": "",
-        "description2": "",
-        "description3": "",
-        "icon": "https://icon-manager.1851365c.er.aliyun-esa.net/icon/feiniu%E9%A3%9E%E7%89%9Bfnnas.jpg",
-        "iconSize": 180,
-        "lanUrl": "https://fnnas.com/",
-        "title": "飞牛",
-        "titleColor": "",
-        "url": "https://fnnas.com/"
-      },
-      "enable": true,
-      "h": 1,
-      "id": "div-card-1772790000986-5efv0s",
-      "isPublic": false,
-      "layouts": {
-        "desktop": {
-          "h": 1,
-          "w": 0.5,
-          "x": 3.5,
-          "y": 0
-        }
-      },
-      "rowSpan": 1,
-      "type": "div-card",
-      "w": 0.5,
-      "x": 3.5,
-      "y": 0
-    },
-    {
       "colSpan": 1,
       "data": {
-        "useMock": false
+        "useMock": true
       },
       "enable": false,
       "h": 2,

@@ -469,6 +469,87 @@
         }
       ],
       "title": "收藏夹"
+    },
+    {
+      "cardLayout": "horizontal",
+      "cardSize": 120,
+      "gridGap": 8,
+      "iconSize": 48,
+      "id": "1770926015770",
+      "items": [
+        {
+          "allowRestart": true,
+          "allowStop": true,
+          "containerId": "mock-1",
+          "containerName": "nginx-proxy",
+          "description": "Docker Container",
+          "icon": "",
+          "id": "1770926015771",
+          "isPublic": false,
+          "lanUrl": "http://152.32.239.65:80",
+          "openInNewTab": true,
+          "title": "nginx-proxy",
+          "url": "http://152.32.239.65:80"
+        },
+        {
+          "allowRestart": true,
+          "allowStop": true,
+          "containerId": "mock-2",
+          "containerName": "redis-cache",
+          "description": "Docker Container",
+          "icon": "",
+          "id": "1770926021056",
+          "isPublic": false,
+          "lanUrl": "http://152.32.239.65:6379",
+          "openInNewTab": true,
+          "title": "redis-cache",
+          "url": "http://152.32.239.65:6379"
+        },
+        {
+          "allowRestart": true,
+          "allowStop": true,
+          "containerId": "mock-3",
+          "containerName": "postgres-db",
+          "description": "Docker Container",
+          "icon": "",
+          "id": "1770926022947",
+          "isPublic": false,
+          "lanUrl": "http://152.32.239.65:5432",
+          "openInNewTab": true,
+          "title": "postgres-db",
+          "url": "http://152.32.239.65:5432"
+        },
+        {
+          "allowRestart": true,
+          "allowStop": true,
+          "containerId": "mock-6",
+          "containerName": "very-long-container-name-for-testing-ui-layout-truncation",
+          "description": "Docker Container",
+          "icon": "",
+          "id": "1770926030114",
+          "isPublic": false,
+          "lanUrl": "http://152.32.239.65:8080",
+          "openInNewTab": true,
+          "title": "very-long-container-name-for-testing-ui-layout-truncation",
+          "url": "http://152.32.239.65:8080"
+        },
+        {
+          "allowRestart": true,
+          "allowStop": true,
+          "containerId": "mock-extra-7",
+          "containerName": "extra-container-7",
+          "description": "Docker Container",
+          "icon": "",
+          "id": "1770926031330",
+          "isPublic": false,
+          "lanUrl": "http://152.32.239.65:9000",
+          "openInNewTab": true,
+          "title": "extra-container-7",
+          "url": "http://152.32.239.65:9000"
+        }
+      ],
+      "showCardBackground": true,
+      "title": "Docker"
     }
   ],
   "rssCategories": [],
@@ -496,7 +577,7 @@
     "authMode": "single",
     "enableDocker": true
   },
-  "version": 10117,
+  "version": 10123,
   "widgets": [
     {
       "colSpan": 1,
@@ -611,8 +692,8 @@
     {
       "colSpan": 1,
       "data": {
-        "content": "",
-        "server_ts": 0
+        "content": " 123123213\n123123123\n123123\n113331\n3\n123\n1\n123\n213\n213\n",
+        "server_ts": 1772789872596
       },
       "enable": true,
       "h": 1.5,
@@ -721,7 +802,6 @@
         "url": ""
       },
       "enable": false,
-      "hideOnMobile": true,
       "id": "w11",
       "isPublic": false,
       "rowSpan": 2,
