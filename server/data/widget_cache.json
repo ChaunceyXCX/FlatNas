@@ -1389,10 +1389,10 @@
     },
     "Shanghai|uapi||||": {
       "data": {
-        "temp": "12.9",
+        "temp": "12.6",
         "city": "上海",
         "text": "多云",
-        "humidity": "78%",
+        "humidity": "79%",
         "today": {
           "min": "8.9",
           "max": "20.5"
@@ -1435,7 +1435,7 @@
           }
         ]
       },
-      "updatedAt": 1774189205205,
+      "updatedAt": 1774191099524,
       "ttl": 600,
       "sourceStatus": "ok"
     },
