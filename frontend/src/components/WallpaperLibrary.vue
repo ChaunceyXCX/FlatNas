@@ -15,8 +15,18 @@ const emit = defineEmits(["update:show", "select"]);
 const store = useMainStore();
 
 const activeTab = ref<"pc" | "mobile" | "api">("pc");
-const wallpapers = ref<string[]>([]);
-const mobileWallpapers = ref<string[]>([]);
+const wallpapers = computed<string[]>({
+  get: () => store.wallpaperListPc,
+  set: (val) => {
+    store.wallpaperListPc = [...val];
+  },
+});
+const mobileWallpapers = computed<string[]>({
+  get: () => store.wallpaperListMobile,
+  set: (val) => {
+    store.wallpaperListMobile = [...val];
+  },
+});
 const loading = ref(false);
 const uploading = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
@@ -35,83 +45,14 @@ const handleConfirm = () => {
   closeConfirmModal();
 };
 
-const pcListEndpoint = computed(() => store.appConfig.wallpaperApiPcList || "/api/backgrounds");
-const mobileListEndpoint = computed(
-  () => store.appConfig.wallpaperApiMobileList || "/api/mobile_backgrounds",
-);
-
 const DEFAULT_WALLPAPER = "default-wallpaper.svg";
 
 const fetchWallpapers = async () => {
   loading.value = true;
-  const headers = store.getHeaders();
   try {
-    const res = await fetch(pcListEndpoint.value, { headers });
-    if (res.ok) {
-      const list = await res.json();
-      // Ensure default wallpaper is always available and unique
-      const cleanList = Array.isArray(list) ? list.filter((f: string) => f !== DEFAULT_WALLPAPER) : [];
-
-      // Apply saved sort order if available
-      const savedOrder = store.appConfig.pcWallpaperOrder || [];
-      const orderedList: string[] = [];
-      const remainingList = new Set(cleanList);
-
-      // Add default first
-      orderedList.push(DEFAULT_WALLPAPER);
-
-      // Add items from saved order if they exist in current list
-      savedOrder.forEach((name) => {
-        if (remainingList.has(name) && name !== DEFAULT_WALLPAPER) {
-          orderedList.push(name);
-          remainingList.delete(name);
-        }
-      });
-
-      // Append remaining items
-      remainingList.forEach((name) => {
-        if (name !== DEFAULT_WALLPAPER) orderedList.push(name as string);
-      });
-
-      wallpapers.value = orderedList;
-    } else {
-      wallpapers.value = [DEFAULT_WALLPAPER];
-    }
-
-    const resMobile = await fetch(mobileListEndpoint.value, { headers });
-    if (resMobile.ok) {
-      const list = await resMobile.json();
-      const cleanList = Array.isArray(list) ? list.filter((f: string) => f !== DEFAULT_WALLPAPER) : [];
-
-      // Apply saved sort order
-      const savedOrder = store.appConfig.mobileWallpaperOrder || [];
-      const orderedList: string[] = [];
-      const remainingList = new Set(cleanList);
-
-      orderedList.push(DEFAULT_WALLPAPER);
-
-      savedOrder.forEach((name) => {
-        if (remainingList.has(name) && name !== DEFAULT_WALLPAPER) {
-          orderedList.push(name);
-          remainingList.delete(name);
-        }
-      });
-
-      remainingList.forEach((name) => {
-        if (name !== DEFAULT_WALLPAPER) orderedList.push(name as string);
-      });
-
-      mobileWallpapers.value = orderedList;
-    } else {
-      mobileWallpapers.value = [DEFAULT_WALLPAPER];
-    }
+    await store.fetchWallpaperLists();
   } catch (e) {
     console.error(e);
-    // Fallback on error
-    if (!wallpapers.value.includes(DEFAULT_WALLPAPER))
-      wallpapers.value = [DEFAULT_WALLPAPER, ...wallpapers.value];
-    if (!mobileWallpapers.value.includes(DEFAULT_WALLPAPER))
-      mobileWallpapers.value = [DEFAULT_WALLPAPER, ...mobileWallpapers.value];
   } finally {
     loading.value = false;
   }
@@ -227,13 +168,9 @@ const executeUpload = async () => {
       : store.appConfig.wallpaperApiMobileUpload || "/api/mobile_backgrounds/upload";
 
   try {
-    const token = localStorage.getItem("flat-nas-token");
-    const headers: Record<string, string> = {};
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-
     const res = await fetch(endpoint, {
       method: "POST",
-      headers,
+      headers: store.getHeaders(),
       body: formData,
     });
 
@@ -282,21 +219,13 @@ const executeDelete = async (name: string, type: "pc" | "mobile") => {
   const endpoint = `${trimmed}/${encodeURIComponent(name)}`;
 
   try {
-    const token = localStorage.getItem("flat-nas-token");
-    const headers: Record<string, string> = {};
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-
     const res = await fetch(endpoint, {
       method: "DELETE",
-      headers,
+      headers: store.getHeaders(),
     });
 
     if (res.ok) {
-      if (type === "pc") {
-        wallpapers.value = wallpapers.value.filter((w) => w !== name);
-      } else {
-        mobileWallpapers.value = mobileWallpapers.value.filter((w) => w !== name);
-      }
+      await fetchWallpapers();
       store.refreshResources();
     } else {
       alert("删除失败");
@@ -338,6 +267,10 @@ const currentRotationMode = computed({
   },
 });
 
+const isWallpaperLocked = computed(
+  () => !store.appConfig.pcRotation && !store.appConfig.mobileRotation,
+);
+
 const toggleRotation = () => {
   currentRotationEnabled.value = !currentRotationEnabled.value;
 };
@@ -345,6 +278,15 @@ const toggleRotation = () => {
 const togglePlayMode = () => {
   currentRotationMode.value = currentRotationMode.value === "random" ? "sequential" : "random";
 };
+
+const stopAndLockRotation = () => {
+  store.appConfig.pcRotation = false;
+  store.appConfig.mobileRotation = false;
+};
+
+const lockButtonLabel = computed(() =>
+  isWallpaperLocked.value ? "已锁定" : "停止并锁定",
+);
 
 const customApiUrl = ref("");
 const currentGeneratorUrl = ref("");
@@ -756,7 +698,11 @@ onBeforeUnmount(() => {
                     ? 'text-purple-600 bg-purple-50'
                     : 'text-blue-600 bg-blue-50'
                 "
-                :title="currentRotationMode === 'random' ? '当前：随机播放' : '当前：顺序播放'"
+                :title="
+                  currentRotationMode === 'random'
+                    ? '播放方式：随机（仅轮播开启后生效）'
+                    : '播放方式：顺序（仅轮播开启后生效）'
+                "
               >
                 <span>{{ currentRotationMode === "random" ? "随机" : "顺播" }}</span>
               </button>
@@ -771,7 +717,7 @@ onBeforeUnmount(() => {
                       : 'text-gray-600 hover:bg-white'
                   "
                 >
-                  <span>{{ currentRotationEnabled ? "轮播中" : "点击轮播" }}</span>
+                  <span>{{ currentRotationEnabled ? "轮播中" : "开启轮播" }}</span>
                 </button>
                 <input
                   v-if="!currentRotationEnabled"
@@ -785,19 +731,18 @@ onBeforeUnmount(() => {
               </div>
             </div>
 
-            <!-- Fixed Background Button -->
+            <!-- Lock Wallpaper Button -->
             <button
-              v-if="!currentRotationEnabled"
-              @click="store.appConfig.fixedWallpaper = !store.appConfig.fixedWallpaper"
+              @click="stopAndLockRotation"
               class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1 shadow-sm"
               :class="
-                store.appConfig.fixedWallpaper
+                isWallpaperLocked
                   ? 'bg-blue-500 text-white hover:bg-blue-600 shadow-blue-200'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               "
-              title="固定当前壁纸，不参与轮播"
+              title="锁定当前壁纸（会停止 PC 与手机端自动轮播）"
             >
-              <span>{{ store.appConfig.fixedWallpaper ? "已固定" : "固定" }}</span>
+              <span>{{ lockButtonLabel }}</span>
             </button>
 
             <div

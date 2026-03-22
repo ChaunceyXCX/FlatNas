@@ -211,6 +211,75 @@ export const useMainStore = defineStore("main", () => {
     return headers;
   };
 
+  const DEFAULT_WALLPAPER_NAME = "default-wallpaper.svg";
+  const wallpaperListPc = ref<string[]>([DEFAULT_WALLPAPER_NAME]);
+  const wallpaperListMobile = ref<string[]>([DEFAULT_WALLPAPER_NAME]);
+
+  const ensureDefaultWallpaperFirst = (list: string[]) => {
+    const next = list.filter((name) => typeof name === "string" && name.length > 0);
+    const noDefault = next.filter((name) => name !== DEFAULT_WALLPAPER_NAME);
+    return [DEFAULT_WALLPAPER_NAME, ...noDefault];
+  };
+
+  const buildOrderedWallpaperList = (list: unknown, savedOrder: string[] | undefined) => {
+    const cleanList = Array.isArray(list)
+      ? list.filter(
+          (name): name is string =>
+            typeof name === "string" && name.length > 0 && name !== DEFAULT_WALLPAPER_NAME,
+        )
+      : [];
+    const orderedList: string[] = [DEFAULT_WALLPAPER_NAME];
+    const remainingList = new Set(cleanList);
+
+    (savedOrder || []).forEach((name) => {
+      if (remainingList.has(name)) {
+        orderedList.push(name);
+        remainingList.delete(name);
+      }
+    });
+
+    remainingList.forEach((name) => {
+      orderedList.push(name);
+    });
+
+    return orderedList;
+  };
+
+  const fetchWallpaperLists = async () => {
+    const headers = getHeaders();
+    const pcEndpoint = appConfig.value.wallpaperApiPcList || "/api/backgrounds";
+    const mobileEndpoint = appConfig.value.wallpaperApiMobileList || "/api/mobile_backgrounds";
+
+    try {
+      const [pcRes, mobileRes] = await Promise.all([
+        fetch(pcEndpoint, { headers }),
+        fetch(mobileEndpoint, { headers }),
+      ]);
+
+      if (pcRes.ok) {
+        wallpaperListPc.value = buildOrderedWallpaperList(
+          await pcRes.json(),
+          appConfig.value.pcWallpaperOrder,
+        );
+      } else {
+        wallpaperListPc.value = ensureDefaultWallpaperFirst(wallpaperListPc.value);
+      }
+
+      if (mobileRes.ok) {
+        wallpaperListMobile.value = buildOrderedWallpaperList(
+          await mobileRes.json(),
+          appConfig.value.mobileWallpaperOrder,
+        );
+      } else {
+        wallpaperListMobile.value = ensureDefaultWallpaperFirst(wallpaperListMobile.value);
+      }
+    } catch (error) {
+      console.error("Failed to fetch wallpaper lists", error);
+      wallpaperListPc.value = ensureDefaultWallpaperFirst(wallpaperListPc.value);
+      wallpaperListMobile.value = ensureDefaultWallpaperFirst(wallpaperListMobile.value);
+    }
+  };
+
   const isValidNetworkMode = (mode: string) =>
     mode === "auto" || mode === "lan" || mode === "wan" || mode === "latency";
 
@@ -438,7 +507,7 @@ export const useMainStore = defineStore("main", () => {
   }
 
   // Version Check
-  const currentVersion = "1.1.5dev5";
+  const currentVersion = "1.1.5";
   const latestVersion = ref("");
   const dockerUpdateAvailable = ref(false);
   const updateCheckLastAt = useStorage<number>("flat-nas-update-check-last-at", 0);
@@ -861,7 +930,6 @@ export const useMainStore = defineStore("main", () => {
     mobileBackground: "/default-wallpaper.svg",
     solidBackgroundColor: "",
     enableMobileWallpaper: true,
-    fixedWallpaper: false,
     deviceMode: "auto",
     widgetAreaSize: 4,
     widgetAreaCols: 4,
@@ -951,6 +1019,14 @@ export const useMainStore = defineStore("main", () => {
     delete (next as { forceNetworkMode?: unknown }).forceNetworkMode;
     return next;
   };
+  type LegacyWallpaperLockConfig = AppConfig & { fixedWallpaper?: boolean };
+  const migrateLegacyWallpaperLock = (config: LegacyWallpaperLockConfig) => {
+    if (config.fixedWallpaper === true) {
+      config.pcRotation = false;
+      config.mobileRotation = false;
+    }
+    delete config.fixedWallpaper;
+  };
   const normalizeVersion = (value: unknown) => {
     if (typeof value === "number" && Number.isFinite(value)) {
       return Math.max(0, Math.floor(value));
@@ -1009,7 +1085,9 @@ export const useMainStore = defineStore("main", () => {
         applyServerWidgets(normalizeIncomingWidgets(cache.widgets as WidgetConfig[]));
       }
       if (cache.appConfig) {
-        appConfig.value = { ...appConfig.value, ...cache.appConfig };
+        const mergedConfig = { ...appConfig.value, ...cache.appConfig } as LegacyWallpaperLockConfig;
+        migrateLegacyWallpaperLock(mergedConfig);
+        appConfig.value = mergedConfig;
         delete appConfig.value.forceNetworkMode;
       }
       if (
@@ -1102,7 +1180,9 @@ export const useMainStore = defineStore("main", () => {
     const tWidgets = performance.now();
 
     if (data.appConfig) {
-      appConfig.value = { ...appConfig.value, ...data.appConfig };
+      const mergedConfig = { ...appConfig.value, ...data.appConfig } as LegacyWallpaperLockConfig;
+      migrateLegacyWallpaperLock(mergedConfig);
+      appConfig.value = mergedConfig;
       delete appConfig.value.forceNetworkMode;
     }
     if (
@@ -2368,12 +2448,15 @@ export const useMainStore = defineStore("main", () => {
     widgets,
     mergedWidgets,
     appConfig,
+    wallpaperListPc,
+    wallpaperListMobile,
     forceNetworkMode,
     password,
     isLogged,
     token,
     username, // Export username
     getHeaders,
+    fetchWallpaperLists,
     isExpandedMode,
     activeMusicPlayer,
     webPaginationActiveGroupId,

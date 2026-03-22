@@ -282,7 +282,6 @@ func GetData(c *gin.Context) {
 
 	// Align memo widget data with memo files to avoid rollback on full refresh
 	if widgets, ok := userData["widgets"].([]interface{}); ok {
-		memoFileMu.Lock()
 		for _, w := range widgets {
 			widgetMap, ok := w.(map[string]interface{})
 			if !ok {
@@ -297,13 +296,14 @@ func GetData(c *gin.Context) {
 				continue
 			}
 			memoFile := memoFilePath(username, widgetID)
-			data, err := ensureMemoFile(userFile, memoFile, widgetID, widgetMap["data"])
+			memoFileMu.Lock()
+			data, err := ensureMemoFile(userFile, memoFile, widgetID, widgetMap["data"], userData)
+			memoFileMu.Unlock()
 			if err != nil {
 				continue
 			}
 			widgetMap["data"] = data
 		}
-		memoFileMu.Unlock()
 	}
 
 	if userStatErr == nil && sysStatErr == nil {
@@ -429,6 +429,14 @@ func loadMemoFallbackContent(userFile, widgetID string) string {
 	if err := utils.ReadJSON(userFile, &userData); err != nil {
 		return ""
 	}
+	return extractMemoFromUserData(userData, widgetID)
+}
+
+// extractMemoFromUserData 从已解析的 data.json 中查找 memo 内容，避免对每个 memo 重复读盘解析整份配置。
+func extractMemoFromUserData(userData map[string]interface{}, widgetID string) string {
+	if userData == nil || widgetID == "" {
+		return ""
+	}
 	widgets, ok := userData["widgets"].([]interface{})
 	if !ok {
 		return ""
@@ -447,7 +455,7 @@ func loadMemoFallbackContent(userFile, widgetID string) string {
 	return ""
 }
 
-func ensureMemoFile(userFile, memoFile, widgetID string, preloadedData interface{}) (MemoFileData, error) {
+func ensureMemoFile(userFile, memoFile, widgetID string, preloadedData interface{}, userData map[string]interface{}) (MemoFileData, error) {
 	var data MemoFileData
 	if err := utils.ReadJSON(memoFile, &data); err == nil {
 		if data.Mode != "simple" && data.Mode != "rich" {
@@ -467,7 +475,11 @@ func ensureMemoFile(userFile, memoFile, widgetID string, preloadedData interface
 	content := ""
 	if preloadedData != nil {
 		content = extractMemoContentFromWidgetData(preloadedData)
-	} else {
+	}
+	if content == "" && userData != nil {
+		content = extractMemoFromUserData(userData, widgetID)
+	}
+	if content == "" {
 		content = loadMemoFallbackContent(userFile, widgetID)
 	}
 	serverTS := int64(0)
@@ -512,7 +524,7 @@ func GetMemo(c *gin.Context) {
 
 	memoFileMu.Lock()
 	defer memoFileMu.Unlock()
-	data, err := ensureMemoFile(userFile, memoFile, widgetID, nil)
+	data, err := ensureMemoFile(userFile, memoFile, widgetID, nil, nil)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read memo"})
 		return
@@ -571,7 +583,7 @@ func SaveMemo(c *gin.Context) {
 	memoFileMu.Lock()
 	defer memoFileMu.Unlock()
 
-	current, err := ensureMemoFile(userFile, memoFile, widgetID, nil)
+	current, err := ensureMemoFile(userFile, memoFile, widgetID, nil, nil)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to read memo"})
 		return

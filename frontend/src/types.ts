@@ -90,7 +90,6 @@ export interface AppConfig {
   mobileWallpaperConfig?: WallpaperConfig;
   solidBackgroundColor?: string;
   enableMobileWallpaper?: boolean;
-  fixedWallpaper?: boolean; // Deprecated in favor of specific rotation flags
   pcRotation?: boolean;
   pcRotationInterval?: number;
   pcRotationMode?: "random" | "sequential";

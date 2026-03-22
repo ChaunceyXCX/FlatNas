@@ -1,39 +1,14 @@
-import { ref, watch, onMounted, onUnmounted } from "vue";
+import { watch, onMounted, onUnmounted } from "vue";
 import { useMainStore } from "../stores/main";
 
 export function useWallpaperRotation() {
   const store = useMainStore();
 
-  const pcWallpapers = ref<string[]>([]);
-  const mobileWallpapers = ref<string[]>([]);
-
   let pcInterval: ReturnType<typeof setInterval> | null = null;
   let mobileInterval: ReturnType<typeof setInterval> | null = null;
 
-  const fetchWallpapers = async () => {
-    try {
-      const res = await fetch(store.appConfig.wallpaperApiPcList || "/api/backgrounds");
-      if (res.ok) pcWallpapers.value = await res.json();
-      if (pcWallpapers.value.length === 0) {
-        pcWallpapers.value = ["default-wallpaper.svg"];
-      }
-
-      const resMobile = await fetch(
-        store.appConfig.wallpaperApiMobileList || "/api/mobile_backgrounds",
-      );
-      if (resMobile.ok) mobileWallpapers.value = await resMobile.json();
-      if (mobileWallpapers.value.length === 0) {
-        mobileWallpapers.value = ["default-wallpaper.svg"];
-      }
-    } catch (e) {
-      console.error("Failed to fetch wallpapers for rotation", e);
-      if (pcWallpapers.value.length === 0) pcWallpapers.value = ["default-wallpaper.svg"];
-      if (mobileWallpapers.value.length === 0) mobileWallpapers.value = ["default-wallpaper.svg"];
-    }
-  };
-
   const rotate = (type: "pc" | "mobile") => {
-    const list = type === "pc" ? pcWallpapers.value : mobileWallpapers.value;
+    const list = type === "pc" ? store.wallpaperListPc : store.wallpaperListMobile;
     if (list.length === 0) return;
 
     const mode =
@@ -52,11 +27,12 @@ export function useWallpaperRotation() {
       const prefix = type === "pc" ? "/backgrounds/" : "/mobile_backgrounds/";
       // Be careful with URL encoding if used, but usually it's plain
 
+      const currentPath = (currentUrl || "").split("?")[0] || "";
       let currentName = "";
-      if (currentUrl === "/default-wallpaper.svg") {
+      if (currentPath === "/default-wallpaper.svg") {
         currentName = "default-wallpaper.svg";
-      } else if (currentUrl?.startsWith(prefix)) {
-        currentName = currentUrl.replace(prefix, "");
+      } else if (currentPath.startsWith(prefix)) {
+        currentName = currentPath.replace(prefix, "");
       }
 
       let currentIndex = -1;
@@ -121,20 +97,8 @@ export function useWallpaperRotation() {
     },
   );
 
-  // Also watch if fixedWallpaper is toggled - if so, disable both?
-  watch(
-    () => store.appConfig.fixedWallpaper,
-    (val) => {
-      if (val) {
-        store.appConfig.pcRotation = false;
-        store.appConfig.mobileRotation = false;
-      }
-    },
-  );
-
   onMounted(() => {
-    fetchWallpapers().then(() => {
-      // Initial check
+    store.fetchWallpaperLists().finally(() => {
       updatePcInterval();
       updateMobileInterval();
     });

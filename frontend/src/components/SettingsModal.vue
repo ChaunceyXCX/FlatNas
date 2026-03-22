@@ -921,8 +921,18 @@ const versionLabel = ref("");
 const versions = ref<{ id: string; label: string; createdAt: number; size: number }[]>([]);
 const loadingVersions = ref(false);
 const isImporting = ref(false);
+/** 上传阶段 | 导入完成后后台补图标 */
+const importOverlayMode = ref<"upload" | "icons">("upload");
 const importProgress = ref(0);
 const importTotal = ref(0);
+
+const findNavItemByIdInStore = (id: string): NavItem | null => {
+  for (const g of store.groups) {
+    const found = g.items.find((it) => it.id === id);
+    if (found) return found;
+  }
+  return null;
+};
 
 // 文件传输：缩略图管理
 const isRegeneratingThumbs = ref(false);
@@ -1302,11 +1312,26 @@ const triggerImport = () => {
   fileInput.value?.click();
 };
 
-const checkImage = (url: string): Promise<boolean> => {
+const AUTO_ICON_CHECK_TIMEOUT_MS = 1500;
+const autoIconCache = new Map<string, Promise<string>>();
+
+const checkImage = (url: string, timeoutMs = AUTO_ICON_CHECK_TIMEOUT_MS): Promise<boolean> => {
   return new Promise((resolve) => {
     const img = new Image();
-    img.onload = () => resolve(true);
-    img.onerror = () => resolve(false);
+    let settled = false;
+    const finalize = (ok: boolean) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      img.onload = null;
+      img.onerror = null;
+      // Stop any pending image work once we already know the result.
+      img.src = "";
+      resolve(ok);
+    };
+    const timer = window.setTimeout(() => finalize(false), timeoutMs);
+    img.onload = () => finalize(true);
+    img.onerror = () => finalize(false);
     img.src = url;
   });
 };
@@ -1315,16 +1340,27 @@ const getAutoIcon = async (url: string) => {
   if (!url) return "";
   try {
     const urlObj = new URL(url);
-    const hostname = urlObj.hostname;
-    const candidates = [
-      `https://www.favicon.vip/get.php?url=${encodeURIComponent(url)}`,
-      `https://icon.bqb.cool?url=${encodeURIComponent(url)}`,
-      `https://icons.duckduckgo.com/ip3/${hostname}.ico`,
-      `${urlObj.origin}/favicon.ico`,
-    ];
-    for (const src of candidates) {
-      if (await checkImage(src)) return src;
+    const hostname = urlObj.hostname.toLowerCase();
+    const cacheKey = hostname || url;
+    let task = autoIconCache.get(cacheKey);
+
+    if (!task) {
+      task = (async () => {
+        const candidates = [
+          `https://www.favicon.vip/get.php?url=${encodeURIComponent(url)}`,
+          `https://icon.bqb.cool?url=${encodeURIComponent(url)}`,
+          `https://icons.duckduckgo.com/ip3/${hostname}.ico`,
+          `${urlObj.origin}/favicon.ico`,
+        ];
+        for (const src of candidates) {
+          if (await checkImage(src)) return src;
+        }
+        return "";
+      })();
+      autoIconCache.set(cacheKey, task);
     }
+
+    return await task;
   } catch {
     // ignore
   }
@@ -1336,6 +1372,7 @@ const handleFileChange = (event: Event) => {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = async (e: ProgressEvent<FileReader>) => {
+    let sunPanelItemsNeedingIcons: NavItem[] = [];
     try {
       const content = e.target?.result as string;
       let data = JSON.parse(content);
@@ -1393,36 +1430,9 @@ const handleFileChange = (event: Event) => {
           }),
         );
 
-        // Auto fetch icons
-        document.body.style.cursor = "wait";
+        // SunPanel：先快速导入；图标在「导入成功」后于后台抓取并单独保存（见下方 POST 之后逻辑）
         const allItems = newGroups.flatMap((g) => g.items);
-
-        isImporting.value = true;
-        importTotal.value = allItems.length;
-        importProgress.value = 0;
-
-        // Batch processing to avoid overwhelming the browser
-        const batchSize = 10;
-        for (let i = 0; i < allItems.length; i += batchSize) {
-          const batch = allItems.slice(i, i + batchSize);
-          await Promise.all(
-            batch.map(async (item) => {
-              try {
-                // Only fetch if icon is missing
-                if (item.icon) return;
-
-                const targetUrl = item.url || item.lanUrl;
-                if (targetUrl) {
-                  const icon = await getAutoIcon(targetUrl);
-                  if (icon) item.icon = icon;
-                }
-              } finally {
-                importProgress.value++;
-              }
-            }),
-          );
-        }
-        document.body.style.cursor = "default";
+        sunPanelItemsNeedingIcons = allItems.filter((it) => !it.icon && !!(it.url || it.lanUrl));
 
         // Preserve existing config, append new groups
         const existingGroups = store.groups;
@@ -1444,6 +1454,12 @@ const handleFileChange = (event: Event) => {
       if ("password" in data) {
         delete data.password;
       }
+
+      isImporting.value = true;
+      importOverlayMode.value = "upload";
+      importProgress.value = 0;
+      importTotal.value = 0;
+
       const token = localStorage.getItem("flat-nas-token");
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (token) headers["Authorization"] = `Bearer ${token}`;
@@ -1454,14 +1470,54 @@ const handleFileChange = (event: Event) => {
         body: JSON.stringify(data),
       });
       if (!r.ok) throw new Error("import_post_failed:" + r.status);
+
+      await store.fetchData();
+
+      if (sunPanelItemsNeedingIcons.length > 0) {
+        importOverlayMode.value = "icons";
+        importTotal.value = sunPanelItemsNeedingIcons.length;
+        importProgress.value = 0;
+
+        const batchSize = 10;
+        for (let i = 0; i < sunPanelItemsNeedingIcons.length; i += batchSize) {
+          const batch = sunPanelItemsNeedingIcons.slice(i, i + batchSize);
+          await Promise.all(
+            batch.map(async (refItem) => {
+              try {
+                const live = findNavItemByIdInStore(refItem.id);
+                if (!live || live.icon) return;
+                const targetUrl = live.url || live.lanUrl;
+                if (targetUrl) {
+                  const icon = await getAutoIcon(targetUrl);
+                  if (icon) live.icon = icon;
+                }
+              } finally {
+                importProgress.value++;
+              }
+            }),
+          );
+        }
+
+        const saveResult = await store.saveData(true, true);
+        if (saveResult !== "saved" && saveResult !== "no_change") {
+          console.warn("[SettingsModal][Import] post-icon saveData:", saveResult);
+          if (saveResult === "conflict") {
+            alert("配置已导入且图标已尽量抓取，但保存时出现版本冲突，请刷新页面后再试。");
+            return;
+          }
+        }
+      }
+
       alert("导入成功！");
-      window.location.reload();
     } catch (err) {
       alert("导入失败，请检查文件格式是否为 JSON。");
       console.error("[SettingsModal][Import] failed", err);
     } finally {
       if (fileInput.value) fileInput.value.value = "";
       isImporting.value = false;
+      importOverlayMode.value = "upload";
+      importProgress.value = 0;
+      importTotal.value = 0;
     }
   };
   reader.readAsText(file);
@@ -1727,16 +1783,27 @@ watch(activeTab, (val) => {
           class="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent mx-auto"
         ></div>
         <div>
-          <h3 class="text-lg font-bold text-gray-900">正在导入配置...</h3>
-          <p class="text-sm text-gray-500 mt-1">正在自动抓取图标，请勿关闭页面</p>
+          <h3 class="text-lg font-bold text-gray-900">
+            {{ importOverlayMode === "upload" ? "正在导入配置…" : "正在后台抓取图标…" }}
+          </h3>
+          <p class="text-sm text-gray-500 mt-1">
+            <template v-if="importOverlayMode === 'upload'">
+              正在保存到服务器，请稍候（完成后若需补图标会继续显示进度）
+            </template>
+            <template v-else>
+              配置已保存。正在从网络获取网站图标，完成后会自动写入配置。若某个站点较慢会短暂停顿，属于正常现象。
+            </template>
+          </p>
         </div>
-        <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
-          <div
-            class="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-out"
-            :style="{ width: `${importTotal > 0 ? (importProgress / importTotal) * 100 : 0}%` }"
-          ></div>
+        <div v-if="importOverlayMode === 'icons' && importTotal > 0" class="space-y-1">
+          <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+            <div
+              class="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-out"
+              :style="{ width: `${(importProgress / importTotal) * 100}%` }"
+            ></div>
+          </div>
+          <p class="text-xs text-gray-400">图标进度：{{ importProgress }} / {{ importTotal }}</p>
         </div>
-        <p class="text-xs text-gray-400">{{ importProgress }} / {{ importTotal }}</p>
       </div>
     </div>
 
