@@ -14,6 +14,14 @@ const props = defineProps<{
 const emit = defineEmits(["update:show", "select"]);
 const store = useMainStore();
 
+/** GET / multipart：只带 Bearer，不设 Content-Type（避免破坏 FormData） */
+const authHeadersOnly = (): Record<string, string> => {
+  const h: Record<string, string> = {};
+  const t = store.token || localStorage.getItem("flat-nas-token");
+  if (t) h["Authorization"] = `Bearer ${t}`;
+  return h;
+};
+
 const activeTab = ref<"pc" | "mobile" | "api">("pc");
 const wallpapers = computed<string[]>({
   get: () => store.wallpaperListPc,
@@ -170,7 +178,7 @@ const executeUpload = async () => {
   try {
     const res = await fetch(endpoint, {
       method: "POST",
-      headers: store.getHeaders(),
+      headers: authHeadersOnly(),
       body: formData,
     });
 
@@ -369,6 +377,7 @@ const fetchPreviewImage = async (url: string) => {
       `/api/wallpaper/proxy?url=${encodeURIComponent(url)}&uuid=${uuid}`,
       {
         signal: controller.signal,
+        headers: authHeadersOnly(),
       },
     );
     clearTimeout(timeoutId);
@@ -393,7 +402,7 @@ const fetchPreviewImage = async (url: string) => {
 
     const res = await fetch("/api/wallpaper/resolve", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: store.getHeaders(),
       body: JSON.stringify({ url: timestampedUrl }),
     });
     if (requestId !== previewRequestId.value) return;
@@ -402,6 +411,7 @@ const fetchPreviewImage = async (url: string) => {
     try {
       const proxyRes = await fetch(
         `/api/wallpaper/proxy?url=${encodeURIComponent(resolvedUrl)}&uuid=${requestId}`,
+        { headers: authHeadersOnly() },
       );
       if (requestId !== previewRequestId.value) return;
       if (proxyRes.ok) {
@@ -446,7 +456,6 @@ const applyCustomApi = async (type: "pc" | "mobile", apply: boolean = true) => {
 
   applyingApi.value = true;
   try {
-    const token = localStorage.getItem("flat-nas-token");
     let backgroundPath = "";
 
     const getPreviewBlob = async () => {
@@ -475,6 +484,7 @@ const applyCustomApi = async (type: "pc" | "mobile", apply: boolean = true) => {
       if (urlToFetch) {
         const proxyRes = await fetch(
           `/api/wallpaper/proxy?url=${encodeURIComponent(urlToFetch)}&uuid=apply`,
+          { headers: authHeadersOnly() },
         );
         if (proxyRes.ok) {
           const blob = await proxyRes.blob();
@@ -490,7 +500,7 @@ const applyCustomApi = async (type: "pc" | "mobile", apply: boolean = true) => {
         const timestampedUrl = `${urlToFetch}${separator}v=${Date.now()}`;
         const res = await fetch("/api/wallpaper/resolve", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: store.getHeaders(),
           body: JSON.stringify({ url: timestampedUrl }),
         });
         if (res.ok) {
@@ -498,6 +508,7 @@ const applyCustomApi = async (type: "pc" | "mobile", apply: boolean = true) => {
           previewResolvedUrl.value = data.url;
           const proxyRes = await fetch(
             `/api/wallpaper/proxy?url=${encodeURIComponent(data.url)}&uuid=apply-resolve`,
+            { headers: authHeadersOnly() },
           );
           if (proxyRes.ok) {
             const blob = await proxyRes.blob();
@@ -535,10 +546,8 @@ const applyCustomApi = async (type: "pc" | "mobile", apply: boolean = true) => {
 
       const uploadRes = await fetch(endpoint, {
         method: "POST",
-        headers: {
-            "Authorization": `Bearer ${token}`
-        },
-        body: formData
+        headers: authHeadersOnly(),
+        body: formData,
       });
       
       if (uploadRes.ok) {

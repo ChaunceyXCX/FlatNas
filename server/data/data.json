@@ -510,7 +510,7 @@
     "enableDocker": true
   },
   "username": "",
-  "version": 10212,
+  "version": 10213,
   "widgets": [
     {
       "colSpan": 1,
@@ -661,7 +661,7 @@
       "data": {
         "content": "123",
         "mode": "simple",
-        "server_ts": 1774189286688
+        "server_ts": 1774231637628
       },
       "enable": true,
       "h": 2,
@@ -827,14 +827,6 @@
       "y": 0
     },
     {
-      "colSpan": 1,
-      "enable": false,
-      "id": "docker",
-      "isPublic": true,
-      "rowSpan": 1,
-      "type": "docker"
-    },
-    {
       "colSpan": 2,
       "enable": true,
       "id": "file-transfer",
@@ -860,6 +852,14 @@
       "isPublic": true,
       "rowSpan": 1,
       "type": "status-monitor"
+    },
+    {
+      "colSpan": 1,
+      "enable": false,
+      "id": "docker",
+      "isPublic": true,
+      "rowSpan": 1,
+      "type": "docker"
     }
   ]
 }
