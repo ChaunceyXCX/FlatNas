@@ -25,7 +25,9 @@ let daylightTimer: number | null = null;
 const updateHour = () => {
   currentHour.value = new Date().getHours();
 };
-const isNightTime = computed(() => currentHour.value >= 18 || currentHour.value < 6);
+const isNightTime = computed(
+  () => currentHour.value >= 18 || currentHour.value < 6,
+);
 const isNightDaylightMode = computed(
   () => store.appConfig.daylightModeEnabled && isNightTime.value,
 );
@@ -85,7 +87,10 @@ const aliIconsData = shallowRef<AliIcon[] | null>(null);
 const localGroupId = ref("");
 
 // 表单数据 (合并管理，比以前分散的 ref 更整洁)
-interface EditForm extends Omit<NavItem, "id" | "backupUrls" | "backupLanUrls"> {
+interface EditForm extends Omit<
+  NavItem,
+  "id" | "backupUrls" | "backupLanUrls"
+> {
   backupUrls: { name: string; url: string }[];
   backupLanUrls: { name: string; url: string }[];
 }
@@ -182,7 +187,9 @@ const fetchSimpleIconsData = async () => {
   try {
     // 使用 Iconify API 替代 GitHub Raw，解决国内/Docker环境无法连接的问题
     // Iconify 返回 { prefix: "simple-icons", total: N, uncategorized: ["slug1", "slug2", ...] }
-    const res = await fetch("https://api.iconify.design/collection?prefix=simple-icons");
+    const res = await fetch(
+      "https://api.iconify.design/collection?prefix=simple-icons",
+    );
     if (res.ok) {
       const data = await res.json();
       // 将 uncategorized (slug 数组) 转换为 Fuse 可用的对象格式
@@ -207,7 +214,8 @@ const ALI_ICON_BASE_URLS = [
 const normalizeAliIcons = (icons: AliIcon[], baseUrl: string): AliIcon[] => {
   return icons.map((icon) => {
     const url = typeof icon.url === "string" ? icon.url.trim() : "";
-    const downloadUrl = typeof icon.downloadUrl === "string" ? icon.downloadUrl.trim() : "";
+    const downloadUrl =
+      typeof icon.downloadUrl === "string" ? icon.downloadUrl.trim() : "";
 
     if (downloadUrl) {
       if (
@@ -224,7 +232,11 @@ const normalizeAliIcons = (icons: AliIcon[], baseUrl: string): AliIcon[] => {
       }
     }
 
-    if (/^https?:\/\//i.test(url) || url.startsWith("//") || url.startsWith("data:")) {
+    if (
+      /^https?:\/\//i.test(url) ||
+      url.startsWith("//") ||
+      url.startsWith("data:")
+    ) {
       return { ...icon, downloadUrl: url };
     }
 
@@ -237,7 +249,8 @@ const normalizeAliIcons = (icons: AliIcon[], baseUrl: string): AliIcon[] => {
 };
 
 const resolveAliIconUrl = (icon: AliIcon): string => {
-  const downloadUrl = typeof icon.downloadUrl === "string" ? icon.downloadUrl.trim() : "";
+  const downloadUrl =
+    typeof icon.downloadUrl === "string" ? icon.downloadUrl.trim() : "";
   if (downloadUrl) {
     if (
       /^https?:\/\//i.test(downloadUrl) ||
@@ -255,7 +268,12 @@ const resolveAliIconUrl = (icon: AliIcon): string => {
 
   const url = typeof icon.url === "string" ? icon.url.trim() : "";
   if (!url) return "";
-  if (/^https?:\/\//i.test(url) || url.startsWith("//") || url.startsWith("data:")) return url;
+  if (
+    /^https?:\/\//i.test(url) ||
+    url.startsWith("//") ||
+    url.startsWith("data:")
+  )
+    return url;
 
   try {
     return new URL(url, ALI_ICON_BASE_URLS[0]).href;
@@ -285,7 +303,8 @@ const fetchAliIconsData = async () => {
           const res = await fetch(`${baseUrl}/icons.json`);
           if (!res.ok) throw new Error(`Fetch failed: ${baseUrl}`);
           const data = await res.json();
-          if (!Array.isArray(data)) throw new Error(`Invalid icons.json: ${baseUrl}`);
+          if (!Array.isArray(data))
+            throw new Error(`Invalid icons.json: ${baseUrl}`);
           return normalizeAliIcons(data as AliIcon[], baseUrl);
         }),
       );
@@ -296,7 +315,8 @@ const fetchAliIconsData = async () => {
       for (const r of results) {
         if (r.status !== "fulfilled") continue;
         for (const icon of r.value) {
-          const key = icon.downloadUrl || `${icon.name}|${icon.url}|${icon.filename}`;
+          const key =
+            icon.downloadUrl || `${icon.name}|${icon.url}|${icon.filename}`;
           if (seen.has(key)) continue;
           seen.add(key);
           merged.push(icon);
@@ -409,10 +429,14 @@ const autoAdaptIcon = async () => {
 
     if (localMatches.length > 0) {
       if (localMatches.length === 1) {
-        console.log(`[Search] Auto-selecting single local match: ${localMatches[0]}`);
+        console.log(
+          `[Search] Auto-selecting single local match: ${localMatches[0]}`,
+        );
         form.value.icon = localMatches[0] || "";
       } else {
-        console.log(`[Search] Showing selection modal for ${localMatches.length} local matches`);
+        console.log(
+          `[Search] Showing selection modal for ${localMatches.length} local matches`,
+        );
         iconCandidates.value = localMatches;
         searchSource.value = "local";
         showIconSelection.value = true;
@@ -421,7 +445,9 @@ const autoAdaptIcon = async () => {
     }
 
     // Phase 2: API Fallback (Simple Icons)
-    console.log(`[Search] Phase 1 failed. Starting Phase 2 (API) for: "${searchTerm}"`);
+    console.log(
+      `[Search] Phase 1 failed. Starting Phase 2 (API) for: "${searchTerm}"`,
+    );
     await fetchSimpleIconsData();
     if (simpleIconsData.value) {
       const apiFuse = new Fuse(simpleIconsData.value, {
@@ -439,10 +465,14 @@ const autoAdaptIcon = async () => {
 
       if (apiMatches.length > 0) {
         if (apiMatches.length === 1) {
-          console.log(`[Search] Auto-selecting single API match: ${apiMatches[0]}`);
+          console.log(
+            `[Search] Auto-selecting single API match: ${apiMatches[0]}`,
+          );
           form.value.icon = apiMatches[0] || "";
         } else {
-          console.log(`[Search] Showing selection modal for ${apiMatches.length} API matches`);
+          console.log(
+            `[Search] Showing selection modal for ${apiMatches.length} API matches`,
+          );
           iconCandidates.value = apiMatches;
           searchSource.value = "api";
           showIconSelection.value = true;
@@ -452,7 +482,9 @@ const autoAdaptIcon = async () => {
     }
 
     // Phase 3: AliYun Icon Manager
-    console.log(`[Search] Phase 2 failed. Starting Phase 3 (AliYun) for: "${searchTerm}"`);
+    console.log(
+      `[Search] Phase 2 failed. Starting Phase 3 (AliYun) for: "${searchTerm}"`,
+    );
     await fetchAliIconsData();
     if (aliIconsData.value) {
       const aliFuse = new Fuse(aliIconsData.value, {
@@ -462,16 +494,22 @@ const autoAdaptIcon = async () => {
       });
 
       const aliResults = aliFuse.search(searchTerm);
-      const aliMatches = aliResults.map((result) => resolveAliIconUrl(result.item)).filter(Boolean);
+      const aliMatches = aliResults
+        .map((result) => resolveAliIconUrl(result.item))
+        .filter(Boolean);
 
       console.log(`[Search] Phase 3 found ${aliMatches.length} matches`);
 
       if (aliMatches.length > 0) {
         if (aliMatches.length === 1) {
-          console.log(`[Search] Auto-selecting single Ali match: ${aliMatches[0]}`);
+          console.log(
+            `[Search] Auto-selecting single Ali match: ${aliMatches[0]}`,
+          );
           form.value.icon = aliMatches[0] || "";
         } else {
-          console.log(`[Search] Showing selection modal for ${aliMatches.length} Ali matches`);
+          console.log(
+            `[Search] Showing selection modal for ${aliMatches.length} Ali matches`,
+          );
           iconCandidates.value = aliMatches;
           searchSource.value = "api";
           showIconSelection.value = true;
@@ -484,7 +522,9 @@ const autoAdaptIcon = async () => {
     const targetUrl = form.value.url || form.value.lanUrl;
     if (targetUrl) {
       const urlObj = new URL(targetUrl);
-      const domain = (urlObj.hostname.replace(/^www\./, "").split(".")[0] || "").toLowerCase();
+      const domain = (
+        urlObj.hostname.replace(/^www\./, "").split(".")[0] || ""
+      ).toLowerCase();
       if (domain) {
         const fallbackIcon = `https://cdn.simpleicons.org/${domain}`;
         if (await checkImageExists(fallbackIcon)) {
@@ -552,7 +592,9 @@ const searchAliIcons = async (searchTerm: string) => {
       });
 
       const aliResults = aliFuse.search(searchTerm);
-      const aliMatches = aliResults.map((result) => resolveAliIconUrl(result.item)).filter(Boolean);
+      const aliMatches = aliResults
+        .map((result) => resolveAliIconUrl(result.item))
+        .filter(Boolean);
 
       console.log(`[Search] Found ${aliMatches.length} matches`);
 
@@ -578,6 +620,21 @@ const searchAliIcons = async (searchTerm: string) => {
   }
 };
 
+// favicon 匹配
+const faviconMatch = async () => {
+  const targetUrl = form.value.url || form.value.lanUrl;
+  if (!targetUrl) return;
+  try {
+    const hostname = new URL(
+      targetUrl.startsWith("http") ? targetUrl : `https://${targetUrl}`,
+    ).hostname;
+    // 使用解析服务，它会动态返回该域名最清晰的图标（.png/.ico 等）
+    form.value.icon = `https://api.iowen.cn/favicon/${hostname}.png`;
+  } catch (e) {
+    form.value.icon = "";
+  }
+};
+
 // 二级域名匹配
 const domainMatch = () => {
   const targetUrl = form.value.url || form.value.lanUrl;
@@ -595,7 +652,9 @@ const onIconSelect = (icon: string) => {
 // Helper: 尝试从服务器获取 Base64 图标
 const fetchBase64Icon = async (url: string): Promise<string | null> => {
   try {
-    const res = await fetch(`/api/get-icon-base64?url=${encodeURIComponent(url)}`);
+    const res = await fetch(
+      `/api/get-icon-base64?url=${encodeURIComponent(url)}`,
+    );
     if (res.ok) {
       const data = await res.json();
       if (data.success && data.icon) {
@@ -848,7 +907,9 @@ const extractIconCacheError = (data: any): string => {
   return "图标缓存失败，请稍后重试";
 };
 
-const cacheIconToLocal = async (icon: string): Promise<{ path: string | null; error: string | null }> => {
+const cacheIconToLocal = async (
+  icon: string,
+): Promise<{ path: string | null; error: string | null }> => {
   const trimmed = icon.trim();
   if (!trimmed) return { path: null, error: null };
   if (trimmed.startsWith("/icon-cache/")) return { path: trimmed, error: null };
@@ -860,7 +921,8 @@ const cacheIconToLocal = async (icon: string): Promise<{ path: string | null; er
       const blob = await res.blob();
       return await new Promise((resolve) => {
         const reader = new FileReader();
-        reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : null);
+        reader.onload = () =>
+          resolve(typeof reader.result === "string" ? reader.result : null);
         reader.onerror = () => resolve(null);
         reader.readAsDataURL(blob);
       });
@@ -893,7 +955,11 @@ const cacheIconToLocal = async (icon: string): Promise<{ path: string | null; er
     }
   }
 
-  if (!payload) return { path: null, error: "图标地址格式不支持本地缓存，请改为上传图片或使用 http/https 链接" };
+  if (!payload)
+    return {
+      path: null,
+      error: "图标地址格式不支持本地缓存，请改为上传图片或使用 http/https 链接",
+    };
 
   try {
     const res = await fetch("/api/icon-cache", {
@@ -914,7 +980,8 @@ const cacheIconToLocal = async (icon: string): Promise<{ path: string | null; er
 
 // 提交保存
 const submit = async () => {
-  if (!form.value.title && !form.value.url) return alert("标题和链接总得写一个吧！");
+  if (!form.value.title && !form.value.url)
+    return alert("标题和链接总得写一个吧！");
 
   isSaving.value = true;
   try {
@@ -948,7 +1015,6 @@ const submit = async () => {
     isSaving.value = false;
   }
 };
-
 </script>
 
 <template>
@@ -959,26 +1025,39 @@ const submit = async () => {
   >
     <div
       class="rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transition-all duration-300"
-      :class="isNightDaylightMode ? 'night-settings bg-slate-900/60 backdrop-blur-xl border border-white/10' : 'bg-white'"
+      :class="
+        isNightDaylightMode
+          ? 'night-settings bg-slate-900/60 backdrop-blur-xl border border-white/10'
+          : 'bg-white'
+      "
     >
       <div
         class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white select-none"
       >
-        <h3 class="text-lg font-bold text-gray-800">{{ data ? "修改项目" : "添加新项目" }}</h3>
+        <h3 class="text-lg font-bold text-gray-800">
+          {{ data ? "修改项目" : "添加新项目" }}
+        </h3>
 
         <div class="flex items-center gap-2 ml-auto mr-4">
           <GroupSelector v-model="localGroupId" />
           <div class="w-px h-4 bg-gray-200 mx-1"></div>
           <span class="text-xs font-bold text-gray-500">公开</span>
           <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" v-model="form.isPublic" class="sr-only peer" />
+            <input
+              type="checkbox"
+              v-model="form.isPublic"
+              class="sr-only peer"
+            />
             <div
               class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-gray-900"
             ></div>
           </label>
         </div>
 
-        <button @click="close" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">
+        <button
+          @click="close"
+          class="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+        >
           &times;
         </button>
       </div>
@@ -1006,8 +1085,12 @@ const submit = async () => {
             </div>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-600 mb-1">标题颜色</label>
-            <div class="flex items-center h-[42px] px-2 border border-gray-200 rounded-lg bg-white">
+            <label class="block text-sm font-medium text-gray-600 mb-1"
+              >标题颜色</label
+            >
+            <div
+              class="flex items-center h-[42px] px-2 border border-gray-200 rounded-lg bg-white"
+            >
               <input
                 v-model="form.titleColor"
                 type="color"
@@ -1058,6 +1141,7 @@ const submit = async () => {
               type="text"
               class="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-gray-900 outline-none transition-colors pr-24"
               placeholder="https://example.com"
+              @blur="faviconMatch"
             />
             <button
               @click="domainMatch"
@@ -1068,7 +1152,10 @@ const submit = async () => {
             </button>
           </div>
           <!-- Backup URLs -->
-          <div v-if="form.backupUrls && form.backupUrls.length > 0" class="space-y-2 mt-2">
+          <div
+            v-if="form.backupUrls && form.backupUrls.length > 0"
+            class="space-y-2 mt-2"
+          >
             <div
               v-for="(item, index) in form.backupUrls"
               :key="'backup-wan-' + index"
@@ -1083,7 +1170,8 @@ const submit = async () => {
                   class="w-full px-3 py-2 rounded-lg border focus:border-gray-900 outline-none transition-colors text-sm pr-8"
                   :class="[
                     form.backupUrls.filter(
-                      (i, idx) => i.name && i.name === item.name && idx !== index,
+                      (i, idx) =>
+                        i.name && i.name === item.name && idx !== index,
                     ).length > 0
                       ? 'border-red-300'
                       : 'border-gray-200',
@@ -1118,7 +1206,11 @@ const submit = async () => {
                   type="text"
                   maxlength="500"
                   class="w-full px-3 py-2 rounded-lg border focus:border-gray-900 outline-none transition-colors text-sm pr-8"
-                  :class="isValidUrl(item.url) ? 'border-gray-200' : 'border-red-300 bg-red-50'"
+                  :class="
+                    isValidUrl(item.url)
+                      ? 'border-gray-200'
+                      : 'border-red-300 bg-red-50'
+                  "
                   placeholder="请输入完整URL地址"
                   @keydown.enter.prevent
                 />
@@ -1154,7 +1246,10 @@ const submit = async () => {
 
         <div>
           <label class="block text-sm font-medium text-gray-600 mb-1"
-            >内网链接 <span class="text-gray-400 text-xs">(选填，内网访问时优先跳转)</span>
+            >内网链接
+            <span class="text-gray-400 text-xs"
+              >(选填，内网访问时优先跳转)</span
+            >
             <button
               @click="addBackupLanUrl"
               class="ml-2 text-xs text-gray-500 hover:text-gray-900 hover:underline"
@@ -1170,7 +1265,10 @@ const submit = async () => {
             class="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-gray-900 outline-none transition-colors"
           />
           <!-- Backup LAN URLs -->
-          <div v-if="form.backupLanUrls && form.backupLanUrls.length > 0" class="space-y-2 mt-2">
+          <div
+            v-if="form.backupLanUrls && form.backupLanUrls.length > 0"
+            class="space-y-2 mt-2"
+          >
             <div
               v-for="(item, index) in form.backupLanUrls"
               :key="'backup-lan-' + index"
@@ -1185,7 +1283,8 @@ const submit = async () => {
                   class="w-full px-3 py-2 rounded-lg border focus:border-gray-900 outline-none transition-colors text-sm pr-8"
                   :class="[
                     form.backupLanUrls.filter(
-                      (i, idx) => i.name && i.name === item.name && idx !== index,
+                      (i, idx) =>
+                        i.name && i.name === item.name && idx !== index,
                     ).length > 0
                       ? 'border-red-300'
                       : 'border-gray-200',
@@ -1220,7 +1319,11 @@ const submit = async () => {
                   type="text"
                   maxlength="500"
                   class="w-full px-3 py-2 rounded-lg border focus:border-gray-900 outline-none transition-colors text-sm pr-8"
-                  :class="isValidUrl(item.url) ? 'border-gray-200' : 'border-red-300 bg-red-50'"
+                  :class="
+                    isValidUrl(item.url)
+                      ? 'border-gray-200'
+                      : 'border-red-300 bg-red-50'
+                  "
                   placeholder="请输入完整URL地址"
                   @keydown.enter.prevent
                 />
@@ -1258,7 +1361,9 @@ const submit = async () => {
           <div class="flex items-start justify-between gap-4 mb-3">
             <div class="flex-1">
               <div class="flex items-center gap-4 mb-2">
-                <label class="text-sm font-medium text-gray-600">图标样式</label>
+                <label class="text-sm font-medium text-gray-600"
+                  >图标样式</label
+                >
                 <div class="flex bg-gray-100 p-0.5 rounded-lg text-xs">
                   <button
                     @click="iconType = 'image'"
@@ -1343,7 +1448,9 @@ const submit = async () => {
                   v-if="form.icon"
                   :src="store.getAssetUrl(form.icon)"
                   class="w-full h-full object-cover transition-transform duration-200"
-                  :style="{ transform: `scale(${(form.iconSize ?? 100) / 100})` }"
+                  :style="{
+                    transform: `scale(${(form.iconSize ?? 100) / 100})`,
+                  }"
                   @error="handleIconError"
                   @load="onImgLoad"
                 />
@@ -1353,8 +1460,11 @@ const submit = async () => {
                 <span
                   v-if="form.icon"
                   class="text-3xl transition-transform duration-200"
-                  :style="{ transform: `scale(${(form.iconSize ?? 100) / 100})` }"
-                >{{ form.icon }}</span>
+                  :style="{
+                    transform: `scale(${(form.iconSize ?? 100) / 100})`,
+                  }"
+                  >{{ form.icon }}</span
+                >
                 <span v-else class="text-gray-300 text-xs">Emoji</span>
               </template>
             </div>
@@ -1409,14 +1519,18 @@ const submit = async () => {
               step="5"
               class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-400"
             />
-            <span class="text-xs text-gray-500 w-8 text-right">{{ form.iconSize }}%</span>
+            <span class="text-xs text-gray-500 w-8 text-right"
+              >{{ form.iconSize }}%</span
+            >
           </div>
         </div>
 
         <div class="pt-4 border-t border-gray-100">
           <label class="block text-sm font-medium text-gray-600 mb-2"
             >卡片背景
-            <span class="text-xs text-gray-400 font-normal">(可选，支持模糊和遮罩效果)</span></label
+            <span class="text-xs text-gray-400 font-normal"
+              >(可选，支持模糊和遮罩效果)</span
+            ></label
           >
           <div class="space-y-3">
             <div class="flex items-center gap-2">
@@ -1453,7 +1567,9 @@ const submit = async () => {
               class="grid grid-cols-2 gap-4 mt-2 p-3 bg-gray-50 rounded-lg"
             >
               <div>
-                <label class="block text-xs text-gray-500 mb-1 flex justify-between">
+                <label
+                  class="block text-xs text-gray-500 mb-1 flex justify-between"
+                >
                   <span>模糊半径</span>
                   <span>{{ form.backgroundBlur }}px</span>
                 </label>
@@ -1467,9 +1583,13 @@ const submit = async () => {
                 />
               </div>
               <div>
-                <label class="block text-xs text-gray-500 mb-1 flex justify-between">
+                <label
+                  class="block text-xs text-gray-500 mb-1 flex justify-between"
+                >
                   <span>遮罩浓度</span>
-                  <span>{{ Math.round((form.backgroundMask || 0) * 100) }}%</span>
+                  <span
+                    >{{ Math.round((form.backgroundMask || 0) * 100) }}%</span
+                  >
                 </label>
                 <input
                   type="range"
@@ -1497,7 +1617,9 @@ const submit = async () => {
         </div>
       </div>
 
-      <div class="px-6 py-4 bg-white flex justify-end gap-3 border-t border-gray-100">
+      <div
+        class="px-6 py-4 bg-white flex justify-end gap-3 border-t border-gray-100"
+      >
         <button
           @click="close"
           class="px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors text-sm font-medium"
