@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
@@ -12,10 +13,12 @@ import (
 	"io"
 	"log"
 	"mime"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
@@ -529,4 +532,239 @@ func looksLikeICO(content []byte) bool {
 		return false
 	}
 	return bytes.Equal(content[:4], []byte{0x00, 0x00, 0x01, 0x00})
+}
+
+// FetchFavicon extracts the best favicon URL from a target website.
+// It parses HTML <link> tags and falls back to /favicon.ico.
+// Unlike other icon handlers, this intentionally allows private/LAN hosts
+// since users need to discover favicons from their internal services.
+func FetchFavicon(c *gin.Context) {
+	targetURL := c.Query("url")
+	if targetURL == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Missing url parameter"})
+		return
+	}
+
+	parsed, err := url.Parse(targetURL)
+	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Invalid URL, must be http or https"})
+		return
+	}
+
+	// Build a client that allows access to private hosts (LAN services).
+	// Use a shorter timeout to avoid long hangs on unreachable hosts.
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 5 {
+				return fmt.Errorf("too many redirects")
+			}
+			return nil
+		},
+	}
+
+	// Also try to use proxy client for external sites
+	proxyClient, proxyErr := getSharedProxyClient()
+	if proxyErr == nil && proxyClient != nil {
+		// For external hosts, prefer proxy client; for internal, use direct client
+		if !isPrivateHost(parsed.Hostname()) {
+			client = proxyClient
+			// Override timeout
+			client.Timeout = 10 * time.Second
+		}
+	}
+
+	// Step 1: Fetch the HTML page
+	req, err := http.NewRequest("GET", parsed.String(), nil)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Failed to create request"})
+		return
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"success": false, "error": "Failed to fetch target page", "details": err.Error()})
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		c.JSON(http.StatusOK, gin.H{"success": false, "error": fmt.Sprintf("Target returned status %d", resp.StatusCode)})
+		return
+	}
+
+	// Use the final URL after redirects as the base for resolving relative URLs
+	finalURL := resp.Request.URL.String()
+
+	// Read the HTML body (limit to 2MB to avoid memory issues)
+	const maxHTMLSize = 2 * 1024 * 1024
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxHTMLSize))
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"success": false, "error": "Failed to read page body"})
+		return
+	}
+	html := string(body)
+
+	// Step 2: Parse <link> tags to find favicon
+	bestIconURL := extractFaviconFromHTML(html, finalURL)
+
+	// Step 3: Verify the extracted icon URL
+	if bestIconURL != "" && verifyIconURL(client, bestIconURL) {
+		c.JSON(http.StatusOK, gin.H{"success": true, "icon": bestIconURL})
+		return
+	}
+
+	// Step 4: Fallback to /favicon.ico
+	fallbackParsed, err := url.Parse(finalURL)
+	if err == nil {
+		fallbackURL := fmt.Sprintf("%s://%s/favicon.ico", fallbackParsed.Scheme, fallbackParsed.Host)
+		if verifyIconURL(client, fallbackURL) {
+			c.JSON(http.StatusOK, gin.H{"success": true, "icon": fallbackURL})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{"success": false, "error": "No favicon found"})
+}
+
+// extractFaviconFromHTML parses HTML to find the best favicon URL from <link> tags.
+func extractFaviconFromHTML(html, baseURL string) string {
+	// Match all <link> tags
+	linkTagRegex := regexp.MustCompile(`(?i)<link[^>]+>`)
+	linkTags := linkTagRegex.FindAllString(html, -1)
+
+	var bestIconURL string
+
+	for _, tag := range linkTags {
+		rel := extractAttr(tag, "rel")
+		href := extractAttr(tag, "href")
+
+		if rel == "" || href == "" {
+			continue
+		}
+
+		relLower := strings.ToLower(rel)
+		relTokens := strings.Fields(relLower)
+
+		// Check for standard icon
+		for _, token := range relTokens {
+			if token == "icon" {
+				resolved := resolveURL(href, baseURL)
+				if resolved != "" {
+					return resolved // Found standard icon, return immediately
+				}
+			}
+		}
+
+		// Check for apple-touch-icon as fallback
+		if bestIconURL == "" {
+			for _, token := range relTokens {
+				if token == "apple-touch-icon" || token == "apple-touch-icon-precomposed" {
+					resolved := resolveURL(href, baseURL)
+					if resolved != "" {
+						bestIconURL = resolved
+					}
+				}
+			}
+		}
+	}
+
+	return bestIconURL
+}
+
+// extractAttr extracts an attribute value from an HTML tag string.
+func extractAttr(tag, attrName string) string {
+	// Pattern: attrName="value" or attrName='value' or attrName=value
+	pattern := regexp.MustCompile(`(?i)` + regexp.QuoteMeta(attrName) + `=["']?([^"'>\s]+)["']?`)
+	match := pattern.FindStringSubmatch(tag)
+	if len(match) >= 2 {
+		return match[1]
+	}
+	return ""
+}
+
+// resolveURL resolves a potentially relative URL against a base URL.
+func resolveURL(href, baseURL string) string {
+	if href == "" {
+		return ""
+	}
+	base, err := url.Parse(baseURL)
+	if err != nil {
+		return ""
+	}
+	ref, err := url.Parse(href)
+	if err != nil {
+		return ""
+	}
+	return base.ResolveReference(ref).String()
+}
+
+// verifyIconURL checks if a URL points to a valid image resource.
+func verifyIconURL(client *http.Client, iconURL string) bool {
+	// Try HEAD first
+	req, err := http.NewRequest("HEAD", iconURL, nil)
+	if err != nil {
+		return false
+	}
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return false
+	}
+	resp.Body.Close()
+
+	// If HEAD fails with 405 or 403, try GET
+	if resp.StatusCode == 405 || resp.StatusCode == 403 {
+		getReq, err := http.NewRequest("GET", iconURL, nil)
+		if err != nil {
+			return false
+		}
+		getReq.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+		getResp, err := client.Do(getReq)
+		if err != nil {
+			return false
+		}
+		defer getResp.Body.Close()
+		// Read a small portion to check content type
+		io.ReadAll(io.LimitReader(getResp.Body, 1024))
+		ct := strings.ToLower(getResp.Header.Get("Content-Type"))
+		return getResp.StatusCode == 200 && strings.Contains(ct, "image")
+	}
+
+	if resp.StatusCode != 200 {
+		return false
+	}
+	ct := strings.ToLower(resp.Header.Get("Content-Type"))
+	// Allow image/* or application/octet-stream (some servers don't set correct type for .ico)
+	// Also allow missing content-type for favicon.ico
+	return strings.Contains(ct, "image") || strings.Contains(ct, "octet-stream") || ct == ""
+}
+
+// isPrivateHost checks if a hostname resolves to a private/internal IP address.
+func isPrivateHost(host string) bool {
+	if host == "" {
+		return false
+	}
+	host = strings.TrimSpace(strings.ToLower(host))
+	if host == "localhost" || host == "localhost." {
+		return true
+	}
+	if ip := net.ParseIP(host); ip != nil {
+		return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast()
+	}
+	// Try DNS resolution
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+	if err != nil || len(ips) == 0 {
+		return false
+	}
+	for _, item := range ips {
+		if item.IP != nil && (item.IP.IsLoopback() || item.IP.IsPrivate() || item.IP.IsLinkLocalUnicast()) {
+			return true
+		}
+	}
+	return false
 }

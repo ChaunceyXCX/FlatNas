@@ -183,6 +183,7 @@ func main() {
 		// Icon Routes
 		api.GET("/ali-icons", handlers.GetAliIcons)
 		api.GET("/get-icon-base64", handlers.GetIconBase64)
+		api.GET("/fetch-favicon", handlers.FetchFavicon)
 		api.POST("/icon-cache", handlers.CacheIcon)
 
 		// Amap Proxy Routes

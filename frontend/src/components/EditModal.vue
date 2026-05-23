@@ -620,15 +620,35 @@ const searchAliIcons = async (searchTerm: string) => {
   }
 };
 
-// favicon 匹配
+// favicon 匹配 - 优先通过后端解析页面提取真实图标，支持内外网
 const faviconMatch = async () => {
   const targetUrl = form.value.url || form.value.lanUrl;
   if (!targetUrl) return;
+
+  const fullUrl = targetUrl.startsWith("http")
+    ? targetUrl
+    : `https://${targetUrl}`;
+
+  // 1. 优先通过后端 API 解析页面 HTML 提取真实 favicon
   try {
-    const hostname = new URL(
-      targetUrl.startsWith("http") ? targetUrl : `https://${targetUrl}`,
-    ).hostname;
-    // 使用解析服务，它会动态返回该域名最清晰的图标（.png/.ico 等）
+    const res = await fetch(
+      `/api/fetch-favicon?url=${encodeURIComponent(fullUrl)}`,
+    );
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && data.icon) {
+        iconType.value = "image";
+        form.value.icon = data.icon;
+        return;
+      }
+    }
+  } catch (e) {
+    console.warn("[faviconMatch] Backend fetch-favicon failed:", e);
+  }
+
+  // 2. 降级：使用第三方解析服务
+  try {
+    const hostname = new URL(fullUrl).hostname;
     form.value.icon = `https://api.iowen.cn/favicon/${hostname}.png`;
   } catch (e) {
     form.value.icon = "";
@@ -667,7 +687,7 @@ const fetchBase64Icon = async (url: string): Promise<string | null> => {
   return null;
 };
 
-// 自动抓取网站图标
+// 自动抓取网站图标 - 优先通过后端解析真实 favicon，降级到第三方 API
 const autoFetchIcon = async () => {
   const targetUrl = form.value.url || form.value.lanUrl;
   if (!targetUrl) return alert("请先填写链接！");
@@ -676,20 +696,45 @@ const autoFetchIcon = async () => {
   iconType.value = "image"; // 自动切换到图片模式
 
   try {
-    const urlObj = new URL(targetUrl);
-    // 尝试多种来源抓取图标
-    // 调整顺序：优先使用可靠的 API，最后尝试直接访问 favicon.ico
+    const fullUrl = targetUrl.startsWith("http")
+      ? targetUrl
+      : `https://${targetUrl}`;
+
+    // 1. 优先通过后端 API 解析页面 HTML 提取真实 favicon (支持内网/外网)
+    try {
+      const res = await fetch(
+        `/api/fetch-favicon?url=${encodeURIComponent(fullUrl)}`,
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.icon) {
+          // 尝试将发现的图标通过后端转为 Base64 (以便本地缓存)
+          const base64 = await fetchBase64Icon(data.icon);
+          if (base64) {
+            form.value.icon = base64;
+          } else {
+            form.value.icon = data.icon;
+          }
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn("[autoFetchIcon] Backend fetch-favicon failed:", e);
+    }
+
+    // 2. 降级到第三方图标抓取 API
+    const urlObj = new URL(fullUrl);
     const candidates = [
-      `https://www.favicon.vip/get.php?url=${encodeURIComponent(targetUrl)}`,
-      `https://icon.bqb.cool?url=${encodeURIComponent(targetUrl)}`,
-      `https://api.afmax.cn/so/ico/index.php?r=${encodeURIComponent(targetUrl)}`,
-      `https://api.quickso.cn/api/favicon/index.php?url=${encodeURIComponent(targetUrl)}`,
+      `https://www.favicon.vip/get.php?url=${encodeURIComponent(fullUrl)}`,
+      `https://icon.bqb.cool?url=${encodeURIComponent(fullUrl)}`,
+      `https://api.afmax.cn/so/ico/index.php?r=${encodeURIComponent(fullUrl)}`,
+      `https://api.quickso.cn/api/favicon/index.php?url=${encodeURIComponent(fullUrl)}`,
       `${urlObj.origin}/favicon.ico`,
     ];
 
     let found = false;
     for (const src of candidates) {
-      // 1. 优先尝试让服务器转换成 Base64 (解决内网/外网访问问题)
+      // 优先尝试让服务器转换成 Base64 (解决内网/外网访问问题)
       const base64 = await fetchBase64Icon(src);
       if (base64) {
         form.value.icon = base64;
@@ -697,7 +742,7 @@ const autoFetchIcon = async () => {
         break;
       }
 
-      // 2. 降级：如果服务器不行（比如跨域或其他原因），尝试前端直接加载
+      // 降级：如果服务器不行（比如跨域或其他原因），尝试前端直接加载
       if (await checkImageExists(src)) {
         form.value.icon = src;
         found = true;
